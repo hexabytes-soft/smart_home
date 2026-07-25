@@ -1,71 +1,79 @@
 @props(['project'])
 
-<div class="bg-white shadow-sm sm:rounded-lg p-6 space-y-4">
-    <div>
-        <h3 class="font-medium text-gray-900">Public 2D floor plan</h3>
-        <p class="text-sm text-gray-500 mt-1">
-            Share a password-protected link so clients can view the home as a 2D plan with floor layers. Updates automatically when you save.
-        </p>
+<section class="card p-5 sm:p-6 space-y-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h3 class="text-sm font-semibold text-white">Public share link</h3>
+            <p class="text-xs text-surface-500 mt-1 max-w-xl">
+                Password-protected 2D plan for clients. Updates when you save the map.
+            </p>
+        </div>
+        @if ($project->share_enabled)
+            <span class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Live</span>
+        @else
+            <span class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-surface-800 text-surface-400 border border-surface-700">Off</span>
+        @endif
     </div>
 
     <form method="POST" action="{{ route('projects.share.update', $project) }}" class="space-y-4">
         @csrf
         @method('PUT')
 
-        <label class="flex items-center gap-2 text-sm text-gray-700">
+        <label class="flex items-center gap-2.5 text-sm text-surface-200">
             <input type="hidden" name="share_enabled" value="0">
             <input
                 type="checkbox"
                 name="share_enabled"
                 value="1"
                 @checked(old('share_enabled', $project->share_enabled))
-                class="rounded border-gray-300 text-slate-800 focus:ring-slate-500"
+                class="rounded border-surface-600 bg-surface-800 text-brand-500 focus:ring-brand-500/40"
             >
-            Enable public link
+            Enable public plan link
         </label>
 
         <div>
-            <label for="share_password" class="block text-sm font-medium text-gray-700">Viewer password</label>
+            <label for="share_password" class="block text-xs font-medium text-surface-300 mb-1.5">Viewer password</label>
             <input
                 id="share_password"
                 name="share_password"
                 type="text"
                 autocomplete="new-password"
-                placeholder="{{ $project->share_password ? 'Leave blank to keep current password' : 'Set a password for viewers' }}"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                placeholder="{{ $project->share_password ? 'Leave blank to keep current password' : 'Set a password (min. 4 characters)' }}"
+                class="input-dark block w-full"
             >
             @error('share_password')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-xs text-rose-300">{{ $message }}</p>
             @enderror
-            <p class="mt-1 text-xs text-gray-500">Give this password to anyone you want to view the home. Minimum 4 characters.</p>
         </div>
 
         @if ($project->share_enabled && $project->share_token)
-            <div class="rounded-md border border-slate-200 bg-slate-50 p-3 space-y-2">
-                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide">Public URL</p>
+            <div class="rounded-xl border border-surface-700 bg-surface-950/60 p-4 space-y-2">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Public URL</p>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input
                         type="text"
                         readonly
                         value="{{ $project->shareUrl() }}"
                         id="share-url-field"
-                        class="flex-1 rounded-md border-gray-300 bg-white text-sm font-mono"
+                        class="input-dark flex-1 font-mono text-xs"
                     >
-                    <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('share-url-field').value)" class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-xs font-semibold uppercase tracking-widest text-gray-700 hover:bg-gray-50">
+                    <button
+                        type="button"
+                        onclick="navigator.clipboard.writeText(document.getElementById('share-url-field').value)"
+                        class="btn-secondary text-xs py-2.5 px-4"
+                    >
                         Copy
                     </button>
                 </div>
             </div>
 
-            <label class="flex items-center gap-2 text-sm text-gray-600">
+            <label class="flex items-center gap-2.5 text-sm text-surface-400">
                 <input type="hidden" name="regenerate_token" value="0">
-                <input type="checkbox" name="regenerate_token" value="1" class="rounded border-gray-300 text-slate-800 focus:ring-slate-500">
-                Regenerate link (old URLs will stop working)
+                <input type="checkbox" name="regenerate_token" value="1" class="rounded border-surface-600 bg-surface-800 text-brand-500 focus:ring-brand-500/40">
+                Regenerate link (old URLs stop working)
             </label>
         @endif
 
-        <button type="submit" class="inline-flex items-center px-4 py-2 bg-slate-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-slate-700">
-            Save sharing settings
-        </button>
+        <button type="submit" class="btn-primary text-xs">Save sharing settings</button>
     </form>
-</div>
+</section>
