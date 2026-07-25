@@ -259,6 +259,39 @@
     @apply text-[9px] font-mono text-brand-300/90 leading-none;
 }
 
+.omr-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+
+.omr-symbol {
+    display: inline-block;
+    width: 1.05em;
+    height: 1.05em;
+    vertical-align: -0.15em;
+    background-color: currentColor;
+    -webkit-mask: var(--omr-mask) center / contain no-repeat;
+    mask: var(--omr-mask) center / contain no-repeat;
+}
+
+img.omr-symbol {
+    width: 0.95em;
+    height: 0.95em;
+    object-fit: contain;
+    vertical-align: -0.1em;
+    background: none;
+    -webkit-mask: none;
+    mask: none;
+}
+
+.catalog-tile-price .omr-symbol,
+.device-details-price .omr-symbol {
+    width: 11px;
+    height: 11px;
+}
+
 .device-details-popover {
     @apply fixed z-[120] min-w-[10rem] max-w-[14rem] rounded-xl border border-surface-600 bg-surface-900/95 backdrop-blur-md shadow-2xl px-3 py-2.5 items-center gap-2.5 pointer-events-none;
     display: none;

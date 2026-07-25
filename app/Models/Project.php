@@ -17,6 +17,9 @@ class Project extends Model
         'name',
         'slug',
         'description',
+        'client_name',
+        'client_phone',
+        'project_location',
         'type',
         'status',
         'map_mode',
@@ -71,6 +74,72 @@ class Project extends Model
         }
 
         return route('share.gate', $this->share_token);
+    }
+
+    /**
+     * Map JSON with absolute underlay image URLs (required for public share viewers).
+     */
+    public function mapDataForViewer(): array
+    {
+        return static::absolutizeUnderlayUrls($this->map_data ?? []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $mapData
+     * @return array<string, mixed>
+     */
+    public static function absolutizeUnderlayUrls(array $mapData): array
+    {
+        $floors = $mapData['floors'] ?? null;
+        if (! is_array($floors)) {
+            return $mapData;
+        }
+
+        foreach ($floors as $index => $floor) {
+            if (! is_array($floor)) {
+                continue;
+            }
+
+            $url = $floor['underlay']['url'] ?? null;
+            if (is_string($url) && $url !== '') {
+                $floors[$index]['underlay']['url'] = static::toAbsolutePublicUrl($url);
+            }
+        }
+
+        $mapData['floors'] = $floors;
+
+        return $mapData;
+    }
+
+    /**
+     * Normalize underlay URLs to a same-origin path (/storage/...).
+     * Host-absolute URLs break when APP_URL host differs from the browser host.
+     */
+    public static function toAbsolutePublicUrl(string $url): string
+    {
+        if (
+            str_starts_with($url, 'data:')
+            || str_starts_with($url, 'blob:')
+        ) {
+            return $url;
+        }
+
+        if (preg_match('#^https?://[^/]+(/.*)$#', $url, $matches)) {
+            return $matches[1];
+        }
+
+        if (str_starts_with($url, '//')) {
+            $path = parse_url('http:'.$url, PHP_URL_PATH) ?: '';
+            $query = parse_url('http:'.$url, PHP_URL_QUERY);
+
+            return $query ? $path.'?'.$query : $path;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return $url;
+        }
+
+        return '/'.ltrim($url, '/');
     }
 
     public static function uniqueSlug(string $name): string

@@ -7,15 +7,24 @@
     @php
         $images = $product->imageUrls();
         $hasImages = count($images) > 0;
+        $cardProduct = [
+            'id' => $product->id,
+            'title' => $product->title,
+            'price' => $product->sell_price !== null ? (float) $product->sell_price : null,
+            'image' => $product->primaryImageUrl(),
+        ];
     @endphp
 
     <div class="sf-detail"
          x-data="{
             active: 0,
             images: {{ Js::from($images) }},
+            product: {{ Js::from($cardProduct) }},
             get current() { return this.images[this.active] || null },
             next() { if (!this.images.length) return; this.active = (this.active + 1) % this.images.length },
-            prev() { if (!this.images.length) return; this.active = (this.active - 1 + this.images.length) % this.images.length }
+            prev() { if (!this.images.length) return; this.active = (this.active - 1 + this.images.length) % this.images.length },
+            addToCart() { $store.cart.add(this.product) },
+            buyNow() { $store.cart.buyNow(this.product) }
          }"
          @keydown.right.window="next()"
          @keydown.left.window="prev()">
@@ -60,7 +69,7 @@
 
                 <p class="sf-detail-price {{ $product->sell_price === null ? 'sf-price-muted' : '' }}">
                     @if ($product->sell_price !== null)
-                        {{ number_format((float) $product->sell_price, 2) }}
+                        <x-omr :amount="$product->sell_price" :decimals="2" />
                     @else
                         Price on request
                     @endif
@@ -80,6 +89,8 @@
                 </div>
 
                 <div class="flex flex-wrap gap-3" style="animation: sf-in 0.7s ease 0.18s both;">
+                    <button type="button" class="sf-btn sf-btn-soft" @click="addToCart()">Add to cart</button>
+                    <button type="button" class="sf-btn sf-btn-primary" @click="buyNow()">Buy directly</button>
                     <a href="{{ route('shop.index') }}#collection" class="sf-btn sf-btn-dark">Back to store</a>
                     @can('update', $product)
                         <a href="{{ route('products.edit', $product) }}" class="sf-btn sf-btn-soft">Edit</a>
@@ -106,7 +117,7 @@
                             <h3 class="sf-product-title">{{ $item->title }}</h3>
                             <p class="{{ $item->sell_price !== null ? 'sf-price' : 'sf-price-muted' }}">
                                 @if ($item->sell_price !== null)
-                                    {{ number_format((float) $item->sell_price, 2) }}
+                                    <x-omr :amount="$item->sell_price" :decimals="2" />
                                 @else
                                     On request
                                 @endif

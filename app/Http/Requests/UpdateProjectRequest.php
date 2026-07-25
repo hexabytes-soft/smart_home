@@ -22,6 +22,9 @@ class UpdateProjectRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'client_name' => ['nullable', 'string', 'max:120'],
+            'client_phone' => ['nullable', 'string', 'max:40'],
+            'project_location' => ['nullable', 'string', 'max:255'],
             'type' => ['required', Rule::in(['home', 'building', 'apartment', 'office'])],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'map_mode' => ['required', Rule::in(['2d', '3d', '360'])],

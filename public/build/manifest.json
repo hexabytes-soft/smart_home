@@ -1,27 +1,27 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-BKqZc_iV.css",
+    "file": "assets/app-BJBDsZjl.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-DCZpEFxi.css",
+    "file": "assets/storefront-BKSD1e7V.css",
     "src": "resources/css/storefront.css",
     "isEntry": true
   },
   "resources/css/studio.css": {
-    "file": "assets/studio-SAMBoesw.css",
+    "file": "assets/studio-BNoHYiuI.css",
     "src": "resources/css/studio.css",
     "isEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-CiglKQh9.js",
+    "file": "assets/app-DL00EGo2.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true
   },
   "resources/js/map-editor.js": {
-    "file": "assets/map-editor-DnurDqFh.js",
+    "file": "assets/map-editor-B1btxKdC.js",
     "name": "map-editor",
     "src": "resources/js/map-editor.js",
     "isEntry": true

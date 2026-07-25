@@ -16,7 +16,7 @@
         data-viewer-only="true"
         data-initial-view-mode="plan2d"
         data-can-edit="false"
-        data-map-data='@json($project->map_data ?? [])'
+        data-map-data='@json($mapData ?? $project->mapDataForViewer())'
         data-width="{{ $project->width }}"
         data-depth="{{ $project->depth }}"
         data-live-url="{{ route('share.data', $token) }}"

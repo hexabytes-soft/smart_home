@@ -94,7 +94,9 @@ class ProjectShareController extends Controller
             ->values()
             ->all();
 
-        return view('share.viewplan', compact('project', 'token', 'smartCatalog'));
+        $mapData = $project->mapDataForViewer();
+
+        return view('share.viewplan', compact('project', 'token', 'smartCatalog', 'mapData'));
     }
 
     public function view360(Request $request, string $token): View|RedirectResponse
@@ -117,7 +119,7 @@ class ProjectShareController extends Controller
         }
 
         return response()->json([
-            'map_data' => $project->map_data,
+            'map_data' => $project->mapDataForViewer(),
             'width' => $project->width,
             'depth' => $project->depth,
             'updated_at' => $project->updated_at?->toIso8601String(),

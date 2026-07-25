@@ -57,7 +57,7 @@ class SmartComponentController extends Controller
     {
         $this->authorize('update', $smartComponent);
 
-        return view('smart-components.edit', ['component' => $smartComponent]);
+        return view('smart-components.edit', ['smartComponent' => $smartComponent]);
     }
 
     public function update(Request $request, SmartComponent $smartComponent): RedirectResponse
@@ -109,8 +109,8 @@ class SmartComponentController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'key' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9_]+$/'],
-            'icon' => ['nullable', 'string', 'max:16'],
+            'key' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9_]*$/'],
+            'icon' => ['nullable', 'string', 'max:64'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999'],
             'mount' => ['required', 'in:ceiling,wall,floor,door'],
             'model' => ['nullable', 'string', 'max:120'],
@@ -118,8 +118,13 @@ class SmartComponentController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        if (($data['key'] ?? '') === '') {
+            unset($data['key']);
+        }
+
         $data['icon'] = ($data['icon'] ?? '') !== '' ? $data['icon'] : '●';
         $data['is_active'] = $request->boolean('is_active', $existing?->is_active ?? true);
+        $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : ($existing?->sort_order ?? 0);
 
         return $data;
     }

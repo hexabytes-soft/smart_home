@@ -36,6 +36,20 @@
                         <p class="font-medium">{{ $project->width }}×{{ $project->depth }} m · {{ $project->floors_count }} floor(s)</p>
                     </div>
                 </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-500">Client / اسم العميل</p>
+                        <p class="mt-1 text-gray-800">{{ $project->client_name ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Phone / رقم الهاتف</p>
+                        <p class="mt-1 text-gray-800">{{ $project->client_phone ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Location / مكان المشروع</p>
+                        <p class="mt-1 text-gray-800">{{ $project->project_location ?: '—' }}</p>
+                    </div>
+                </div>
                 <div>
                     <p class="text-gray-500 text-sm">Description</p>
                     <p class="mt-1 text-gray-800">{{ $project->description ?: '—' }}</p>

@@ -4,21 +4,13 @@
 @section('meta_description', 'Explore the Smart Home product collection — curated pieces for modern living.')
 
 @section('content')
-    @php
-        $heroImage = asset('images/storefront/hero-smart-home.jpg');
-    @endphp
-
     <section class="sf-hero" aria-label="Smart Home store">
-        <div
-            class="sf-hero-media has-photo"
-            style="background-image: linear-gradient(0deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.35) 48%, rgba(0,0,0,0.45) 100%), url('{{ $heroImage }}');"
-            aria-hidden="true"
-        ></div>
+        <div class="sf-hero-media" aria-hidden="true"></div>
 
         <div class="sf-hero-inner">
             <p class="sf-hero-kicker">Product store</p>
             <h1 class="sf-hero-brand">Smart Home</h1>
-            <p class="sf-hero-line">A focused collection for modern spaces — clear pricing, strong visuals, no clutter.</p>
+            <p class="sf-hero-line">Smart devices for modern spaces — clear sell prices in Omani Rial.</p>
             <div class="sf-hero-actions">
                 <a href="#collection" class="sf-btn sf-btn-primary">Shop collection</a>
                 @auth
@@ -50,27 +42,44 @@
         @if ($products->count())
             <div class="sf-grid">
                 @foreach ($products as $product)
-                    <a href="{{ route('shop.show', $product) }}" class="sf-product">
-                        <div class="sf-product-media">
-                            @if ($product->primaryImageUrl())
-                                <img src="{{ $product->primaryImageUrl() }}" alt="{{ $product->title }}" loading="lazy">
-                            @else
-                                <div class="sf-placeholder">
-                                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/></svg>
-                                </div>
-                            @endif
-                        </div>
-                        <div class="sf-product-body">
-                            <h3 class="sf-product-title">{{ $product->title }}</h3>
-                            <p class="{{ $product->sell_price !== null ? 'sf-price' : 'sf-price-muted' }}">
-                                @if ($product->sell_price !== null)
-                                    {{ number_format((float) $product->sell_price, 2) }}
+                    @php
+                        $cardProduct = [
+                            'id' => $product->id,
+                            'title' => $product->title,
+                            'price' => $product->sell_price !== null ? (float) $product->sell_price : null,
+                            'image' => $product->primaryImageUrl(),
+                        ];
+                    @endphp
+                    <article
+                        class="sf-product"
+                        x-data="productCardActions({{ Js::from($cardProduct) }})"
+                    >
+                        <a href="{{ route('shop.show', $product) }}" class="sf-product-link">
+                            <div class="sf-product-media">
+                                @if ($product->primaryImageUrl())
+                                    <img src="{{ $product->primaryImageUrl() }}" alt="{{ $product->title }}" loading="lazy">
                                 @else
-                                    On request
+                                    <div class="sf-placeholder">
+                                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/></svg>
+                                    </div>
                                 @endif
-                            </p>
+                            </div>
+                            <div class="sf-product-body">
+                                <h3 class="sf-product-title">{{ $product->title }}</h3>
+                                <p class="{{ $product->sell_price !== null ? 'sf-price' : 'sf-price-muted' }}">
+                                    @if ($product->sell_price !== null)
+                                        <x-omr :amount="$product->sell_price" :decimals="2" />
+                                    @else
+                                        On request
+                                    @endif
+                                </p>
+                            </div>
+                        </a>
+                        <div class="sf-product-actions">
+                            <button type="button" class="sf-btn sf-btn-soft sf-btn-sm" @click.stop="addToCart()">Add to cart</button>
+                            <button type="button" class="sf-btn sf-btn-primary sf-btn-sm" @click.stop="buyNow()">Buy</button>
                         </div>
-                    </a>
+                    </article>
                 @endforeach
             </div>
 

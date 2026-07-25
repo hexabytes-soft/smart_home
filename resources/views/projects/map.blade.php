@@ -18,12 +18,15 @@
     <div
         id="map-editor-root"
         class="studio-shell"
-        data-map-data='@json($project->map_data)'
+        data-map-data='@json($mapData ?? $project->mapDataForViewer())'
         data-width="{{ $project->width }}"
         data-depth="{{ $project->depth }}"
         data-can-edit="{{ auth()->user()->can('editMap', $project) ? 'true' : 'false' }}"
         data-underlay-url="{{ route('projects.map.underlay', $project) }}"
         data-project-name="{{ $project->name }}"
+        data-client-name="{{ $project->client_name }}"
+        data-client-phone="{{ $project->client_phone }}"
+        data-project-location="{{ $project->project_location }}"
         data-smart-catalog='@json($smartCatalog ?? [])'
         data-initial-view-mode="plan2d"
     >
@@ -166,7 +169,7 @@
                 <input type="hidden" name="map_mode" id="map_mode_input" value="2d">
                 <input type="hidden" name="width" id="map_width_input" value="{{ $project->width }}">
                 <input type="hidden" name="depth" id="map_depth_input" value="{{ $project->depth }}">
-                <textarea name="map_data" id="map_data_input">{{ json_encode($project->map_data) }}</textarea>
+                <textarea name="map_data" id="map_data_input">{{ json_encode($mapData ?? $project->mapDataForViewer()) }}</textarea>
             </form>
         @endcan
     </div>
@@ -207,7 +210,11 @@
                 <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-surface-800 shrink-0">
                     <div>
                         <h3 class="text-sm font-semibold text-white">Quotation · عرض سعر</h3>
-                        <p class="text-[11px] text-surface-500 mt-0.5">{{ $project->name }} · prices in OMR (ر.ع.)</p>
+                        <p class="text-[11px] text-surface-500 mt-0.5 flex items-center gap-1.5">
+                            {{ $project->name }} ·
+                            <span class="omr-symbol inline-block w-3.5 h-3.5" role="img" aria-label="OMR" style="--omr-mask: url('{{ asset('images/omr-symbol.png') }}')"></span>
+                            Omani Rial
+                        </p>
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="button" id="quotation-print-btn" class="btn-secondary text-xs py-1.5 px-3">Print invoice</button>
@@ -219,8 +226,16 @@
                 <div id="quotation-body" class="p-5 overflow-y-auto studio-scroll flex-1 space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label for="quotation-client" class="block text-[10px] font-medium text-surface-400 mb-1">Client / العميل</label>
-                            <input id="quotation-client" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="Client name">
+                            <label for="quotation-client" class="block text-[10px] font-medium text-surface-400 mb-1">اسم العميل / Client name</label>
+                            <input id="quotation-client" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="Client name" value="{{ $project->client_name }}">
+                        </div>
+                        <div>
+                            <label for="quotation-phone" class="block text-[10px] font-medium text-surface-400 mb-1">رقم الهاتف / Client phone</label>
+                            <input id="quotation-phone" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="+968 …" value="{{ $project->client_phone }}">
+                        </div>
+                        <div>
+                            <label for="quotation-location" class="block text-[10px] font-medium text-surface-400 mb-1">مكان المشروع / Project location</label>
+                            <input id="quotation-location" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="Location" value="{{ $project->project_location }}">
                         </div>
                         <div>
                             <label for="quotation-notes" class="block text-[10px] font-medium text-surface-400 mb-1">Notes</label>

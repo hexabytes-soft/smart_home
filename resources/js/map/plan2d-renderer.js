@@ -43,34 +43,79 @@ export class Plan2DRenderer {
         this.hide();
     }
 
+    resolveUnderlayUrl(url) {
+        if (!url) return '';
+        if (
+            url.startsWith('http://')
+            || url.startsWith('https://')
+            || url.startsWith('data:')
+            || url.startsWith('blob:')
+        ) {
+            return url;
+        }
+        if (url.startsWith('//')) {
+            return `${window.location.protocol}${url}`;
+        }
+        if (url.startsWith('/')) {
+            return `${window.location.origin}${url}`;
+        }
+        return url;
+    }
+
+    isUnderlayReady(img) {
+        return Boolean(img && img.naturalWidth > 0 && img.complete);
+    }
+
     loadUnderlay(url, onReady) {
         if (!url) return;
-        const cached = this._underlayCache[url];
-        if (cached?.complete) return;
-        if (this._underlayLoading[url]) return;
+        const resolved = this.resolveUnderlayUrl(url);
+        const cacheKey = resolved || url;
+        const cached = this._underlayCache[cacheKey] || this._underlayCache[url];
+        if (this.isUnderlayReady(cached)) {
+            this._underlayCache[cacheKey] = cached;
+            this._underlayCache[url] = cached;
+            return;
+        }
+        if (this._underlayLoading[cacheKey]) return;
 
-        this._underlayLoading[url] = true;
-        const img = cached || new Image();
-        img.crossOrigin = 'anonymous';
+        this._underlayLoading[cacheKey] = true;
+        const img = cached && cached.tagName === 'IMG' ? cached : new Image();
+        // Same-origin /storage images often lack CORS headers; avoid crossOrigin so drawImage works.
         img.onload = () => {
-            img.complete = true;
+            this._underlayCache[cacheKey] = img;
             this._underlayCache[url] = img;
-            delete this._underlayLoading[url];
+            delete this._underlayLoading[cacheKey];
             onReady?.();
         };
         img.onerror = () => {
-            delete this._underlayLoading[url];
+            delete this._underlayLoading[cacheKey];
+            // Retry once with origin-absolute URL if a relative path failed.
+            if (!img.dataset.retried) {
+                img.dataset.retried = '1';
+                const retryUrl = this.resolveUnderlayUrl(url);
+                if (retryUrl && retryUrl !== img.src) {
+                    this._underlayLoading[cacheKey] = true;
+                    img.src = retryUrl;
+                }
+            }
         };
-        if (!cached) {
-            this._underlayCache[url] = img;
-            img.src = url;
+
+        this._underlayCache[cacheKey] = img;
+        this._underlayCache[url] = img;
+        // Force reload if a previous attempt failed mid-flight.
+        if (img.src !== resolved) {
+            img.src = resolved;
+        } else if (this.isUnderlayReady(img)) {
+            delete this._underlayLoading[cacheKey];
+            onReady?.();
         }
     }
 
     drawUnderlay(ctx, underlay, projectWidth, projectDepth) {
         if (!underlay?.url) return;
-        const img = this._underlayCache[underlay.url];
-        if (!img?.complete) return;
+        const resolved = this.resolveUnderlayUrl(underlay.url);
+        const img = this._underlayCache[resolved] || this._underlayCache[underlay.url];
+        if (!this.isUnderlayReady(img)) return;
 
         const bounds = underlay.bounds || [0, 0, projectWidth, projectDepth];
         const [x0, z0, x1, z1] = bounds;
@@ -78,11 +123,12 @@ export class Plan2DRenderer {
         const [sx1, sy1] = this.worldToScreen(x1, z1);
         const w = sx1 - sx0;
         const h = sy1 - sy0;
-        if (w <= 0 || h <= 0) return;
+        if (Math.abs(w) < 1 || Math.abs(h) < 1) return;
 
         ctx.save();
         ctx.globalAlpha = underlay.opacity ?? 0.55;
-        ctx.drawImage(img, sx0, sy0, w, h);
+        // Use abs sizes in case world Y orientation flips screen height.
+        ctx.drawImage(img, Math.min(sx0, sx1), Math.min(sy0, sy1), Math.abs(w), Math.abs(h));
         ctx.restore();
     }
 
@@ -482,18 +528,27 @@ export class Plan2DRenderer {
         ctx.fillStyle = '#0a1018';
         ctx.fillRect(0, 0, w, h);
 
-        if (floor.underlay?.url && floor.underlay.visible !== false && (floor.underlay.opacity ?? 0) > 0.01) {
+        const hasUnderlay = Boolean(
+            floor.underlay?.url
+            && floor.underlay.visible !== false
+            && (floor.underlay.opacity ?? 0) > 0.01
+        );
+
+        if (hasUnderlay) {
             this.loadUnderlay(floor.underlay.url, onUnderlayReady);
             this.drawUnderlay(ctx, floor.underlay, projectWidth, projectDepth);
         }
 
         this.drawGrid(ctx, projectWidth, projectDepth);
 
-        const rooms = floor.rooms?.length ? floor.rooms : [{
-            polygon: [[0, 0], [projectWidth, 0], [projectWidth, projectDepth], [0, projectDepth]],
-            color: 0x1e293b,
-            name: 'Floor',
-        }];
+        // When a floor image exists and no rooms are defined, skip the solid fill so the image stays visible.
+        const rooms = floor.rooms?.length
+            ? floor.rooms
+            : (hasUnderlay ? [] : [{
+                polygon: [[0, 0], [projectWidth, 0], [projectWidth, projectDepth], [0, projectDepth]],
+                color: 0x1e293b,
+                name: 'Floor',
+            }]);
 
         rooms.forEach((room) => {
             const poly = room.polygon || [];
@@ -506,13 +561,8 @@ export class Plan2DRenderer {
             });
             ctx.closePath();
             ctx.fillStyle = hexToCss(room.color ?? 0x1e293b);
-            const hasUnderlay = Boolean(
-                floor.underlay?.url
-                && floor.underlay.visible !== false
-                && (floor.underlay.opacity ?? 0) > 0.01
-            );
             ctx.globalAlpha = hasUnderlay
-                ? (selected?.type === 'room' && selected.id === room.id ? 0.35 : 0.2)
+                ? (selected?.type === 'room' && selected.id === room.id ? 0.28 : 0.12)
                 : (selected?.type === 'room' && selected.id === room.id ? 0.95 : 0.75);
             ctx.fill();
             ctx.globalAlpha = 1;

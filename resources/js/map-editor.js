@@ -33,6 +33,8 @@ import {
     pointInPolygon,
     hexColor,
     formatOmr,
+    formatOmrPlain,
+    formatOmrPrint,
     deviceUnitPrice,
     SMART_CATALOG_ORDER,
     applySmartCatalogFromServer,
@@ -165,6 +167,8 @@ export class MapEditor {
         this.quotationLinesEl = document.querySelector('#quotation-lines');
         this.quotationTotalsEl = document.querySelector('#quotation-totals');
         this.quotationClientInput = document.querySelector('#quotation-client');
+        this.quotationPhoneInput = document.querySelector('#quotation-phone');
+        this.quotationLocationInput = document.querySelector('#quotation-location');
         this.quotationNotesInput = document.querySelector('#quotation-notes');
         this.quotationDiscountInput = document.querySelector('#quotation-discount');
         this.quotationTvaInput = document.querySelector('#quotation-tva');
@@ -218,7 +222,13 @@ export class MapEditor {
             this.rebuildScene();
             this.setViewMode('plan2d');
             this.startLiveSync();
-            requestAnimationFrame(() => this.onResize());
+            requestAnimationFrame(() => {
+                this.onResize();
+                // Underlay image may finish loading after first paint — redraw once settled.
+                this.renderPlan2d();
+                setTimeout(() => this.renderPlan2d(), 250);
+                setTimeout(() => this.renderPlan2d(), 1000);
+            });
             this.animate();
             return;
         }
@@ -267,6 +277,15 @@ export class MapEditor {
             floor.labels ??= [];
             floor.rooms ??= [];
 
+            if (floor.underlay?.url) {
+                floor.underlay.url = this.normalizeUnderlayUrl(floor.underlay.url);
+                floor.underlay.visible ??= true;
+                floor.underlay.opacity ??= 0.92;
+                if (!Array.isArray(floor.underlay.bounds) || floor.underlay.bounds.length < 4) {
+                    floor.underlay.bounds = [0, 0, this.projectWidth, this.projectDepth];
+                }
+            }
+
             floor.walls.forEach((w) => {
                 w.thickness ??= DEFAULT_WALL_THICKNESS;
                 w.height ??= floor.height || DEFAULT_WALL_HEIGHT;
@@ -284,6 +303,25 @@ export class MapEditor {
                 if (r.preset && !r.color) r.color = ROOM_PRESETS[r.preset]?.color;
             });
         });
+    }
+
+    normalizeUnderlayUrl(url) {
+        const value = String(url || '').trim();
+        if (!value) return '';
+        if (value.startsWith('data:') || value.startsWith('blob:')) return value;
+        try {
+            if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('//')) {
+                const abs = value.startsWith('//')
+                    ? `${window.location.protocol}${value}`
+                    : value;
+                const parsed = new URL(abs, window.location.origin);
+                return `${parsed.pathname}${parsed.search}`;
+            }
+        } catch {
+            // keep original
+        }
+        if (value.startsWith('/')) return value;
+        return `/${value.replace(/^\/+/, '')}`;
     }
 
     getFloor() {
@@ -617,7 +655,7 @@ export class MapEditor {
         el.style.top = `${Math.max(pad, top)}px`;
 
         this.selectById('smart', deviceId);
-        this.setStatus(`${spec.label || device.type} · ${formatOmr(price)}`);
+        this.setStatus(`${spec.label || device.type} · ${formatOmrPlain(price)}`);
     }
 
     hideDeviceDetails() {
@@ -840,6 +878,8 @@ export class MapEditor {
         this.quotationDiscountInput?.addEventListener('input', () => this.renderQuotation());
         this.quotationTvaInput?.addEventListener('input', () => this.renderQuotation());
         this.quotationClientInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationPhoneInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationLocationInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationNotesInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationPrintBtn?.addEventListener('click', () => this.printQuotation());
 
@@ -1051,7 +1091,7 @@ export class MapEditor {
         const devices = getDevicesByCategory('all');
         this.haDeviceGridEl.className = 'device-grid';
         this.haDeviceGridEl.innerHTML = devices.map(([key, spec]) => `
-            <button type="button" data-smart="${key}" title="${spec.label} · ${formatOmr(spec.price)}" class="catalog-tile">
+            <button type="button" data-smart="${key}" title="${spec.label} · ${formatOmrPlain(spec.price)}" class="catalog-tile">
                 <span class="catalog-tile-icon" aria-hidden="true">${spec.icon}</span>
                 <span class="catalog-tile-label">${spec.label}</span>
                 <span class="catalog-tile-price">${formatOmr(spec.price)}</span>
@@ -3471,8 +3511,14 @@ export class MapEditor {
 
     applyFloorUnderlay(url) {
         const floor = this.getFloor();
+        let absoluteUrl = String(url || '');
+        if (absoluteUrl.startsWith('/')) {
+            absoluteUrl = `${window.location.origin}${absoluteUrl}`;
+        } else if (absoluteUrl.startsWith('//')) {
+            absoluteUrl = `${window.location.protocol}${absoluteUrl}`;
+        }
         floor.underlay = {
-            url,
+            url: absoluteUrl,
             opacity: 0.92,
             visible: true,
             bounds: [0, 0, this.projectWidth, this.projectDepth],
@@ -3494,7 +3540,18 @@ export class MapEditor {
     openQuotationModal() {
         if (!this.quotationModal) return;
         const meta = this.mapData.quotation || {};
-        if (this.quotationClientInput) this.quotationClientInput.value = meta.client || '';
+        const projectClient = this.root.dataset.clientName || '';
+        const projectPhone = this.root.dataset.clientPhone || '';
+        const projectLocation = this.root.dataset.projectLocation || '';
+        if (this.quotationClientInput) {
+            this.quotationClientInput.value = meta.client || projectClient || '';
+        }
+        if (this.quotationPhoneInput) {
+            this.quotationPhoneInput.value = meta.phone || projectPhone || '';
+        }
+        if (this.quotationLocationInput) {
+            this.quotationLocationInput.value = meta.location || projectLocation || '';
+        }
         if (this.quotationNotesInput) this.quotationNotesInput.value = meta.notes || '';
         if (this.quotationDiscountInput) {
             this.quotationDiscountInput.value = String(meta.discount_pct ?? 0);
@@ -3514,6 +3571,8 @@ export class MapEditor {
     persistQuotationMeta() {
         this.mapData.quotation = {
             client: this.quotationClientInput?.value?.trim() || '',
+            phone: this.quotationPhoneInput?.value?.trim() || '',
+            location: this.quotationLocationInput?.value?.trim() || '',
             notes: this.quotationNotesInput?.value?.trim() || '',
             discount_pct: Number(this.quotationDiscountInput?.value) || 0,
             tva_pct: Number(this.quotationTvaInput?.value) || 0,
@@ -3654,7 +3713,10 @@ export class MapEditor {
                 <span>Total · الإجمالي</span>
                 <span class="font-mono text-brand-300">${formatOmr(totals.total)}</span>
             </div>
-            <p class="text-[10px] text-surface-500 pt-1">Amounts in Omani Rial (OMR / ر.ع.)</p>
+            <p class="text-[10px] text-surface-500 pt-1 flex items-center gap-1.5">
+                Amounts in Omani Rial
+                <span class="omr-symbol" role="img" aria-label="OMR" style="--omr-mask:url('${window.location.origin}/images/omr-symbol.png')"></span>
+            </p>
         `;
     }
 
@@ -3663,6 +3725,8 @@ export class MapEditor {
         const lines = this.collectQuotationLines();
         const totals = this.computeQuotationTotals(lines);
         const client = this.escapeHtml(this.quotationClientInput?.value?.trim() || '—');
+        const phone = this.escapeHtml(this.quotationPhoneInput?.value?.trim() || '—');
+        const location = this.escapeHtml(this.quotationLocationInput?.value?.trim() || '—');
         const notes = this.escapeHtml(this.quotationNotesInput?.value?.trim() || '');
         const projectName = this.escapeHtml(
             this.root.dataset.projectName
@@ -3672,9 +3736,13 @@ export class MapEditor {
         const date = new Date().toLocaleDateString('en-GB');
         const invoiceNo = `QT-${Date.now().toString().slice(-8)}`;
         const logoUrl = `${window.location.origin}/images/afaq-smart-logo.png`;
+        const omrInkUrl = `${window.location.origin}/images/omr-symbol-ink.png`;
+        const omrNavyUrl = `${window.location.origin}/images/omr-symbol-navy.png`;
         const companyAr = 'شركة الأفاق للبيوت الذكية';
         const companyEn = 'afaq.smart';
         const taglineAr = 'بيوت ذكية .. حياة أسهل';
+        const money = (amount) => formatOmrPrint(amount, omrInkUrl);
+        const moneyNavy = (amount) => formatOmrPrint(amount, omrNavyUrl);
 
         const rows = lines.length
             ? lines.map((line, index) => `
@@ -3687,8 +3755,8 @@ export class MapEditor {
                         </div>
                     </td>
                     <td class="center">${line.qty}</td>
-                    <td class="right mono">${formatOmr(line.unit)}</td>
-                    <td class="right mono strong">${formatOmr(line.total)}</td>
+                    <td class="right mono">${money(line.unit)}</td>
+                    <td class="right mono strong">${money(line.total)}</td>
                 </tr>`).join('')
             : '<tr><td colspan="5" class="empty">No devices on this map yet</td></tr>';
 
@@ -3914,9 +3982,31 @@ export class MapEditor {
     font-size: 11px;
   }
   .footer strong { color: var(--navy); }
+  .omr-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .omr-symbol {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+    display: inline-block;
+    vertical-align: middle;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .totals .row.grand .omr-amount { color: #fff; }
+  .totals .row.grand .omr-symbol {
+    filter: brightness(0) invert(1);
+  }
   @media print {
     .sheet { padding: 0; }
     .totals { box-shadow: none; }
+    .omr-symbol { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
 </head>
@@ -3940,12 +4030,16 @@ export class MapEditor {
 
     <section class="meta-grid">
       <div class="meta-card">
-        <div class="k">العميل / Client</div>
+        <div class="k">اسم العميل / Client</div>
         <div class="v">${client}</div>
+        <div class="k" style="margin-top:10px">رقم الهاتف / Phone</div>
+        <div class="v">${phone}</div>
       </div>
       <div class="meta-card">
         <div class="k">المشروع / Project</div>
         <div class="v">${projectName}</div>
+        <div class="k" style="margin-top:10px">مكان المشروع / Location</div>
+        <div class="v">${location}</div>
       </div>
     </section>
 
@@ -3968,16 +4062,16 @@ export class MapEditor {
         <div class="v">${notes || '—'}</div>
       </div>
       <div class="totals">
-        <div class="row muted"><span>المجموع الفرعي / Subtotal</span><span>${formatOmr(totals.subtotal)}</span></div>
-        ${totals.discountPct > 0 ? `<div class="row discount"><span>الخصم / Discount (${totals.discountPct}%)</span><span>− ${formatOmr(totals.discountAmount)}</span></div>` : ''}
-        ${totals.tvaPct > 0 ? `<div class="row"><span>الضريبة / TVA (${totals.tvaPct}%)</span><span>${formatOmr(totals.tvaAmount)}</span></div>` : ''}
-        <div class="row grand"><span>الإجمالي / Total</span><span>${formatOmr(totals.total)}</span></div>
+        <div class="row muted"><span>المجموع الفرعي / Subtotal</span><span>${money(totals.subtotal)}</span></div>
+        ${totals.discountPct > 0 ? `<div class="row discount"><span>الخصم / Discount (${totals.discountPct}%)</span><span>− ${money(totals.discountAmount)}</span></div>` : ''}
+        ${totals.tvaPct > 0 ? `<div class="row"><span>الضريبة / TVA (${totals.tvaPct}%)</span><span>${moneyNavy(totals.tvaAmount)}</span></div>` : ''}
+        <div class="row grand"><span>الإجمالي / Total</span><span>${money(totals.total)}</span></div>
       </div>
     </section>
 
     <footer class="footer">
       <div><strong>${companyAr}</strong> · ${companyEn}</div>
-      <div>العملة: ريال عماني (OMR / ر.ع.)</div>
+      <div class="omr-amount">العملة: <img class="omr-symbol" src="${omrInkUrl}" alt="OMR" width="16" height="16"> ريال عماني</div>
     </footer>
   </div>
 </body>

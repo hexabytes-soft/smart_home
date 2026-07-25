@@ -3,7 +3,11 @@
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-white">Smart Components</h2>
-                <p class="text-sm text-surface-400 mt-0.5">Devices used on floor maps · prices in OMR (ر.ع.)</p>
+                <p class="text-sm text-surface-400 mt-0.5 inline-flex items-center gap-1.5">
+                    Devices used on floor maps · prices in
+                    <x-omr class="text-surface-300" />
+                    Omani Rial
+                </p>
             </div>
             @can('create', App\Models\SmartComponent::class)
                 <a href="{{ route('smart-components.create') }}" class="btn-primary">
@@ -34,7 +38,9 @@
                             <th class="px-4 py-3 font-medium">Component</th>
                             <th class="px-4 py-3 font-medium">Key</th>
                             <th class="px-4 py-3 font-medium">Mount</th>
-                            <th class="px-4 py-3 font-medium">Price (OMR)</th>
+                            <th class="px-4 py-3 font-medium">
+                                <span class="inline-flex items-center gap-1">Price <x-omr /></span>
+                            </th>
                             <th class="px-4 py-3 font-medium">Status</th>
                             <th class="px-4 py-3 font-medium text-right">Actions</th>
                         </tr>
@@ -62,7 +68,7 @@
                                             <button type="submit" class="btn-secondary text-[10px] py-1.5 px-2">Save</button>
                                         </form>
                                     @else
-                                        <span class="font-mono text-sm text-brand-300">{{ number_format((float) $component->price, 3) }} OMR</span>
+                                        <span class="font-mono text-sm text-brand-300"><x-omr :amount="$component->price" /></span>
                                     @endcan
                                 </td>
                                 <td class="px-4 py-3">

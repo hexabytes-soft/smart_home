@@ -20,6 +20,9 @@ class StoreProjectRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'client_name' => ['nullable', 'string', 'max:120'],
+            'client_phone' => ['nullable', 'string', 'max:40'],
+            'project_location' => ['nullable', 'string', 'max:255'],
             'type' => ['required', Rule::in(['home', 'building', 'apartment', 'office'])],
             'map_mode' => ['required', Rule::in(['2d', '3d', '360'])],
             'width' => ['required', 'integer', 'min:5', 'max:200'],

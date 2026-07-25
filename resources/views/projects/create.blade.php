@@ -26,6 +26,24 @@
                         <x-input-error :messages="$errors->get('description')" class="mt-2" />
                     </div>
 
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <div>
+                            <x-input-label for="client_name" value="Client name / اسم العميل" />
+                            <x-text-input id="client_name" name="client_name" class="block mt-1.5 w-full" :value="old('client_name')" placeholder="Client full name" />
+                            <x-input-error :messages="$errors->get('client_name')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="client_phone" value="Client phone / رقم الهاتف" />
+                            <x-text-input id="client_phone" name="client_phone" class="block mt-1.5 w-full" :value="old('client_phone')" placeholder="+968 7xxx xxxx" />
+                            <x-input-error :messages="$errors->get('client_phone')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="project_location" value="Project location / مكان المشروع" />
+                            <x-text-input id="project_location" name="project_location" class="block mt-1.5 w-full" :value="old('project_location')" placeholder="Muscat, …" />
+                            <x-input-error :messages="$errors->get('project_location')" class="mt-2" />
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <x-input-label for="type" value="Type" />

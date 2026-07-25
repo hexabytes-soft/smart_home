@@ -102,7 +102,9 @@ class ProjectController extends Controller
             ->values()
             ->all();
 
-        return view('projects.map', compact('project', 'smartCatalog'));
+        $mapData = $project->mapDataForViewer();
+
+        return view('projects.map', compact('project', 'smartCatalog', 'mapData'));
     }
 
     public function updateMap(Request $request, Project $project): RedirectResponse
@@ -265,10 +267,11 @@ class ProjectController extends Controller
         ]);
 
         $path = $request->file('image')->store("projects/{$project->id}/underlays", 'public');
+        $relative = '/storage/'.ltrim($path, '/');
 
         return response()->json([
             'message' => 'Floor image uploaded.',
-            'url' => '/storage/'.ltrim($path, '/'),
+            'url' => Project::toAbsolutePublicUrl($relative),
         ]);
     }
 }

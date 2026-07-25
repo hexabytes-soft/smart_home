@@ -87,12 +87,37 @@ export const CURRENCY = {
     code: 'OMR',
     label: 'ر.ع.',
     name: 'Omani Rial',
+    symbolUrl: '/images/omr-symbol.png',
 };
 
-export function formatOmr(amount) {
+export function omrSymbolUrl() {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+        return `${window.location.origin}${CURRENCY.symbolUrl}`;
+    }
+    return CURRENCY.symbolUrl;
+}
+
+/** Plain text for titles / status bars */
+export function formatOmrPlain(amount) {
     const n = Number(amount);
     const safe = Number.isFinite(n) ? n : 0;
     return `${safe.toFixed(3)} ${CURRENCY.code}`;
+}
+
+/** HTML with official Omani Rial symbol (inherits text color via CSS mask) */
+export function formatOmr(amount) {
+    const n = Number(amount);
+    const safe = Number.isFinite(n) ? n : 0;
+    const src = omrSymbolUrl();
+    return `<span class="omr-amount"><span class="omr-symbol" role="img" aria-label="OMR" style="--omr-mask:url('${src}')"></span>${safe.toFixed(3)}</span>`;
+}
+
+/** Print-safe HTML using a solid ink PNG (CSS masks often fail in print) */
+export function formatOmrPrint(amount, symbolUrl = null) {
+    const n = Number(amount);
+    const safe = Number.isFinite(n) ? n : 0;
+    const src = symbolUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/images/omr-symbol-ink.png`;
+    return `<span class="omr-amount"><img class="omr-symbol" src="${src}" alt="OMR" width="18" height="18">${safe.toFixed(3)}</span>`;
 }
 
 export function deviceUnitPrice(type, device = null) {

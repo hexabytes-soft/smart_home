@@ -51,9 +51,23 @@
                     </div>
                     <div class="p-5 space-y-4">
                         <p class="text-sm text-surface-400 line-clamp-2 min-h-[2.5rem]">{{ $product->description ?: 'No description' }}</p>
-                        <div class="flex items-center gap-4 text-xs text-surface-500">
-                            <span>Buy: {{ $product->buy_price !== null ? number_format((float) $product->buy_price, 2) : '—' }}</span>
-                            <span>Sell: {{ $product->sell_price !== null ? number_format((float) $product->sell_price, 2) : '—' }}</span>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                            <span class="text-surface-500">
+                                Buy:
+                                @if ($product->buy_price !== null)
+                                    <x-omr :amount="$product->buy_price" :decimals="2" class="text-surface-300" />
+                                @else
+                                    —
+                                @endif
+                            </span>
+                            <span class="text-brand-300 font-semibold inline-flex items-center gap-1">
+                                Sell:
+                                @if ($product->sell_price !== null)
+                                    <x-omr :amount="$product->sell_price" :decimals="2" />
+                                @else
+                                    <span class="text-amber-300">Add price</span>
+                                @endif
+                            </span>
                         </div>
                         <div class="flex gap-2 pt-1">
                             <a href="{{ route('products.show', $product) }}" class="btn-primary flex-1 text-center text-xs py-2.5">View</a>

@@ -11,7 +11,7 @@
             <div class="card p-6 sm:p-8">
                 <form method="POST" action="{{ route('smart-components.store') }}" class="space-y-5">
                     @csrf
-                    @include('smart-components._form')
+                    @include('smart-components._form', ['smartComponent' => null])
                     <div class="flex items-center gap-4 pt-4 border-t border-surface-800">
                         <x-primary-button>Create component</x-primary-button>
                         <a href="{{ route('smart-components.index') }}" class="text-sm text-surface-400 hover:text-white transition-colors">Cancel</a>
