@@ -170,9 +170,13 @@ export class MapEditor {
         this.quotationPhoneInput = document.querySelector('#quotation-phone');
         this.quotationLocationInput = document.querySelector('#quotation-location');
         this.quotationNotesInput = document.querySelector('#quotation-notes');
+        this.quotationProgrammingInput = document.querySelector('#quotation-programming');
+        this.quotationInstallationInput = document.querySelector('#quotation-installation');
         this.quotationDiscountInput = document.querySelector('#quotation-discount');
         this.quotationTvaInput = document.querySelector('#quotation-tva');
+        this.quotationSaveDefaultsBtn = document.querySelector('#quotation-save-defaults-btn');
         this.quotationPrintBtn = document.querySelector('#quotation-print-btn');
+        this.quotationDefaultsKey = 'smart_home_quotation_service_defaults';
         this.activeFloorIndex = Number(this.mapData.active_floor) || 0;
 
         this.viewMode = this.initialViewMode;
@@ -877,10 +881,15 @@ export class MapEditor {
         });
         this.quotationDiscountInput?.addEventListener('input', () => this.renderQuotation());
         this.quotationTvaInput?.addEventListener('input', () => this.renderQuotation());
+        this.quotationProgrammingInput?.addEventListener('input', () => this.renderQuotation());
+        this.quotationInstallationInput?.addEventListener('input', () => this.renderQuotation());
         this.quotationClientInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationPhoneInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationLocationInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationNotesInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationProgrammingInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationInstallationInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationSaveDefaultsBtn?.addEventListener('click', () => this.saveQuotationServiceDefaults());
         this.quotationPrintBtn?.addEventListener('click', () => this.printQuotation());
 
         this.floorSwitcherEl?.addEventListener('click', (e) => {
@@ -3537,9 +3546,41 @@ export class MapEditor {
         this.setImportFile(null);
     }
 
+    getQuotationServiceDefaults() {
+        try {
+            const raw = localStorage.getItem(this.quotationDefaultsKey);
+            const data = raw ? JSON.parse(raw) : {};
+            return {
+                programming_price: Math.max(0, Number(data.programming_price) || 0),
+                installation_price: Math.max(0, Number(data.installation_price) || 0),
+            };
+        } catch {
+            return { programming_price: 0, installation_price: 0 };
+        }
+    }
+
+    saveQuotationServiceDefaults() {
+        const programming = Math.max(0, Number(this.quotationProgrammingInput?.value) || 0);
+        const installation = Math.max(0, Number(this.quotationInstallationInput?.value) || 0);
+        localStorage.setItem(this.quotationDefaultsKey, JSON.stringify({
+            programming_price: programming,
+            installation_price: installation,
+        }));
+        this.persistQuotationMeta();
+        this.setStatus('Programming & installation prices saved for all quotations');
+        if (this.quotationSaveDefaultsBtn) {
+            const prev = this.quotationSaveDefaultsBtn.textContent;
+            this.quotationSaveDefaultsBtn.textContent = 'Saved ✓';
+            setTimeout(() => {
+                if (this.quotationSaveDefaultsBtn) this.quotationSaveDefaultsBtn.textContent = prev || 'Save for all quotations';
+            }, 1600);
+        }
+    }
+
     openQuotationModal() {
         if (!this.quotationModal) return;
         const meta = this.mapData.quotation || {};
+        const defaults = this.getQuotationServiceDefaults();
         const projectClient = this.root.dataset.clientName || '';
         const projectPhone = this.root.dataset.clientPhone || '';
         const projectLocation = this.root.dataset.projectLocation || '';
@@ -3553,6 +3594,14 @@ export class MapEditor {
             this.quotationLocationInput.value = meta.location || projectLocation || '';
         }
         if (this.quotationNotesInput) this.quotationNotesInput.value = meta.notes || '';
+        if (this.quotationProgrammingInput) {
+            const value = meta.programming_price ?? defaults.programming_price ?? 0;
+            this.quotationProgrammingInput.value = String(Number(value) || 0);
+        }
+        if (this.quotationInstallationInput) {
+            const value = meta.installation_price ?? defaults.installation_price ?? 0;
+            this.quotationInstallationInput.value = String(Number(value) || 0);
+        }
         if (this.quotationDiscountInput) {
             this.quotationDiscountInput.value = String(meta.discount_pct ?? 0);
         }
@@ -3574,6 +3623,8 @@ export class MapEditor {
             phone: this.quotationPhoneInput?.value?.trim() || '',
             location: this.quotationLocationInput?.value?.trim() || '',
             notes: this.quotationNotesInput?.value?.trim() || '',
+            programming_price: Math.max(0, Number(this.quotationProgrammingInput?.value) || 0),
+            installation_price: Math.max(0, Number(this.quotationInstallationInput?.value) || 0),
             discount_pct: Number(this.quotationDiscountInput?.value) || 0,
             tva_pct: Number(this.quotationTvaInput?.value) || 0,
         };
@@ -3618,7 +3669,10 @@ export class MapEditor {
     }
 
     computeQuotationTotals(lines) {
-        const subtotal = lines.reduce((sum, line) => sum + line.total, 0);
+        const devicesSubtotal = lines.reduce((sum, line) => sum + line.total, 0);
+        const programming = Math.max(0, Number(this.quotationProgrammingInput?.value) || 0);
+        const installation = Math.max(0, Number(this.quotationInstallationInput?.value) || 0);
+        const subtotal = Math.round((devicesSubtotal + programming + installation) * 1000) / 1000;
         const discountPct = Math.min(100, Math.max(0, Number(this.quotationDiscountInput?.value) || 0));
         const tvaPct = Math.min(100, Math.max(0, Number(this.quotationTvaInput?.value) || 0));
         const discountAmount = Math.round(subtotal * (discountPct / 100) * 1000) / 1000;
@@ -3627,6 +3681,9 @@ export class MapEditor {
         const total = Math.round((afterDiscount + tvaAmount) * 1000) / 1000;
 
         return {
+            devicesSubtotal,
+            programming,
+            installation,
             subtotal,
             discountPct,
             discountAmount,
@@ -3648,51 +3705,66 @@ export class MapEditor {
             || this.root.querySelector('.studio-topbar-title')?.textContent?.trim()
             || 'Project';
 
-        if (!lines.length) {
+        if (!lines.length && totals.programming <= 0 && totals.installation <= 0) {
             this.quotationLinesEl.innerHTML = `
                 <div class="p-6 text-center text-sm text-surface-400">
                     No devices placed yet. Add cameras, sensors, network gear… then open Quotation again.
                 </div>`;
-            this.quotationTotalsEl.innerHTML = `
-                <div class="flex justify-between text-sm text-surface-300">
-                    <span>Total</span>
-                    <span class="font-semibold text-white">${formatOmr(0)}</span>
+        } else if (!lines.length) {
+            this.quotationLinesEl.innerHTML = `
+                <div class="p-4 text-center text-xs text-surface-500">
+                    No devices on map — totals include programming / installation only.
                 </div>`;
-            return;
-        }
-
-        this.quotationLinesEl.innerHTML = `
-            <table class="quotation-table w-full text-left">
-                <thead>
-                    <tr class="text-[10px] uppercase tracking-wide text-surface-500 border-b border-surface-700 bg-surface-800/60">
-                        <th class="px-3 py-2 font-medium">Item</th>
-                        <th class="px-3 py-2 font-medium text-center">Qty</th>
-                        <th class="px-3 py-2 font-medium text-right">Unit</th>
-                        <th class="px-3 py-2 font-medium text-right">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${lines.map((line) => `
-                        <tr class="border-b border-surface-800/80 text-sm text-surface-200">
-                            <td class="px-3 py-2.5">
-                                <span class="inline-flex items-center gap-2">
-                                    <span aria-hidden="true">${line.icon}</span>
-                                    <span>${line.name}</span>
-                                </span>
-                            </td>
-                            <td class="px-3 py-2.5 text-center">${line.qty}</td>
-                            <td class="px-3 py-2.5 text-right font-mono text-xs">${formatOmr(line.unit)}</td>
-                            <td class="px-3 py-2.5 text-right font-mono text-xs text-white">${formatOmr(line.total)}</td>
+        } else {
+            this.quotationLinesEl.innerHTML = `
+                <table class="quotation-table w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] uppercase tracking-wide text-surface-500 border-b border-surface-700 bg-surface-800/60">
+                            <th class="px-3 py-2 font-medium">Item</th>
+                            <th class="px-3 py-2 font-medium text-center">Qty</th>
+                            <th class="px-3 py-2 font-medium text-right">Unit</th>
+                            <th class="px-3 py-2 font-medium text-right">Total</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>`;
+                    </thead>
+                    <tbody>
+                        ${lines.map((line) => `
+                            <tr class="border-b border-surface-800/80 text-sm text-surface-200">
+                                <td class="px-3 py-2.5">
+                                    <span class="inline-flex items-center gap-2">
+                                        <span aria-hidden="true">${line.icon}</span>
+                                        <span>${line.name}</span>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2.5 text-center">${line.qty}</td>
+                                <td class="px-3 py-2.5 text-right font-mono text-xs">${formatOmr(line.unit)}</td>
+                                <td class="px-3 py-2.5 text-right font-mono text-xs text-white">${formatOmr(line.total)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>`;
+        }
 
         this.quotationTotalsEl.innerHTML = `
             <div class="flex justify-between text-xs text-surface-400">
                 <span>${projectName}</span>
                 <span>${totals.itemCount} item(s)</span>
             </div>
+            <div class="flex justify-between text-sm text-surface-300">
+                <span>Devices · الأجهزة</span>
+                <span class="font-mono">${formatOmr(totals.devicesSubtotal)}</span>
+            </div>
+            ${totals.programming > 0 ? `
+                <div class="flex justify-between text-sm text-surface-300">
+                    <span>سعر البرمجة / Programming</span>
+                    <span class="font-mono">${formatOmr(totals.programming)}</span>
+                </div>
+            ` : ''}
+            ${totals.installation > 0 ? `
+                <div class="flex justify-between text-sm text-surface-300">
+                    <span>سعر التركيب / Installation</span>
+                    <span class="font-mono">${formatOmr(totals.installation)}</span>
+                </div>
+            ` : ''}
             <div class="flex justify-between text-sm text-surface-300">
                 <span>Subtotal</span>
                 <span class="font-mono">${formatOmr(totals.subtotal)}</span>
@@ -4062,6 +4134,9 @@ export class MapEditor {
         <div class="v">${notes || '—'}</div>
       </div>
       <div class="totals">
+        <div class="row muted"><span>الأجهزة / Devices</span><span>${money(totals.devicesSubtotal)}</span></div>
+        ${totals.programming > 0 ? `<div class="row"><span>سعر البرمجة / Programming</span><span>${money(totals.programming)}</span></div>` : ''}
+        ${totals.installation > 0 ? `<div class="row"><span>سعر التركيب / Installation</span><span>${money(totals.installation)}</span></div>` : ''}
         <div class="row muted"><span>المجموع الفرعي / Subtotal</span><span>${money(totals.subtotal)}</span></div>
         ${totals.discountPct > 0 ? `<div class="row discount"><span>الخصم / Discount (${totals.discountPct}%)</span><span>− ${money(totals.discountAmount)}</span></div>` : ''}
         ${totals.tvaPct > 0 ? `<div class="row"><span>الضريبة / TVA (${totals.tvaPct}%)</span><span>${moneyNavy(totals.tvaAmount)}</span></div>` : ''}

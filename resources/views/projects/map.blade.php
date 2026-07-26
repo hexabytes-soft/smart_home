@@ -245,6 +245,26 @@
 
                     <div id="quotation-lines" class="rounded-xl border border-surface-700 overflow-hidden"></div>
 
+                    <div class="rounded-xl border border-surface-700 bg-surface-800/30 p-3 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-[11px] font-semibold text-surface-200">خدمات إضافية / Extra services</p>
+                            <button type="button" id="quotation-save-defaults-btn" class="btn-secondary text-[10px] py-1 px-2.5">
+                                Save for all quotations
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="quotation-programming" class="block text-[10px] font-medium text-surface-400 mb-1">سعر البرمجة / Programming</label>
+                                <input id="quotation-programming" type="number" min="0" step="0.001" value="0" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white font-mono">
+                            </div>
+                            <div>
+                                <label for="quotation-installation" class="block text-[10px] font-medium text-surface-400 mb-1">سعر التركيب / Installation</label>
+                                <input id="quotation-installation" type="number" min="0" step="0.001" value="0" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white font-mono">
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-surface-500">Saved with this project automatically. Use “Save for all quotations” to reuse these amounts on other projects.</p>
+                    </div>
+
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                             <label for="quotation-discount" class="block text-[10px] font-medium text-surface-400 mb-1">Discount %</label>

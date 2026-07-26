@@ -41,18 +41,39 @@
 
                     @if (count($product->imagePaths()))
                         <div>
-                            <p class="text-xs font-medium text-surface-300 mb-2">Current images</p>
+                            <div class="flex flex-wrap items-end justify-between gap-2 mb-2">
+                                <div>
+                                    <p class="text-xs font-medium text-surface-300">Current images</p>
+                                    <p class="text-[11px] text-surface-500 mt-0.5">Choose which image is the store thumbnail.</p>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 @foreach ($product->imagePaths() as $path)
-                                    <label class="relative block aspect-square rounded-xl overflow-hidden border border-surface-700 bg-surface-950 cursor-pointer group">
+                                    <div class="relative aspect-square rounded-xl overflow-hidden border {{ $product->isThumbnail($path) ? 'border-brand-400 ring-2 ring-brand-500/40' : 'border-surface-700' }} bg-surface-950">
                                         <img src="{{ $product->imageUrl($path) }}" alt="" class="w-full h-full object-cover">
-                                        <span class="absolute inset-x-0 bottom-0 bg-black/70 text-[10px] text-center py-1.5 text-surface-200 group-has-[:checked]:text-rose-300">
-                                            <input type="checkbox" name="remove_images[]" value="{{ $path }}" class="mr-1 rounded border-surface-600 bg-surface-800 text-rose-500">
-                                            Remove
-                                        </span>
-                                    </label>
+                                        <div class="absolute inset-x-0 bottom-0 bg-black/75 px-2 py-2 space-y-1.5">
+                                            <label class="flex items-center gap-1.5 text-[10px] text-surface-100 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="thumbnail"
+                                                    value="{{ $path }}"
+                                                    @checked(old('thumbnail', $product->thumbnailPath()) === $path)
+                                                    class="border-surface-500 bg-surface-800 text-brand-500 focus:ring-brand-500/40"
+                                                >
+                                                Thumbnail
+                                            </label>
+                                            <label class="flex items-center gap-1.5 text-[10px] text-surface-300 cursor-pointer">
+                                                <input type="checkbox" name="remove_images[]" value="{{ $path }}" class="rounded border-surface-600 bg-surface-800 text-rose-500">
+                                                Remove
+                                            </label>
+                                        </div>
+                                        @if ($product->isThumbnail($path))
+                                            <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-brand-500 text-white">Thumb</span>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
+                            <x-input-error :messages="$errors->get('thumbnail')" class="mt-2" />
                         </div>
                     @endif
 

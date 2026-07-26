@@ -25,6 +25,7 @@ class UpdateProductRequest extends FormRequest
             'images.*' => ['image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'],
             'remove_images' => ['nullable', 'array'],
             'remove_images.*' => ['string', 'max:255'],
+            'thumbnail' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

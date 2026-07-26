@@ -45,12 +45,15 @@
 
             <div class="card p-6 space-y-4">
                 <p class="text-sm font-semibold text-white">Images</p>
-                @php $urls = $product->imageUrls(); @endphp
-                @if (count($urls))
+                @php $paths = $product->imagePaths(); @endphp
+                @if (count($paths))
                     <div class="grid grid-cols-2 gap-3">
-                        @foreach ($urls as $url)
-                            <a href="{{ $url }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-surface-700 bg-surface-950">
-                                <img src="{{ $url }}" alt="" class="w-full h-full object-cover">
+                        @foreach ($paths as $path)
+                            <a href="{{ $product->imageUrl($path) }}" target="_blank" class="relative block aspect-square rounded-xl overflow-hidden border {{ $product->isThumbnail($path) ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-surface-700' }} bg-surface-950">
+                                <img src="{{ $product->imageUrl($path) }}" alt="" class="w-full h-full object-cover">
+                                @if ($product->isThumbnail($path))
+                                    <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-brand-500 text-white">Thumbnail</span>
+                                @endif
                             </a>
                         @endforeach
                     </div>

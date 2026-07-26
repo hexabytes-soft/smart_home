@@ -41,6 +41,14 @@ class ProductController extends Controller
         $images = $this->storeImages($request->file('images', []));
         $data['images'] = $images !== [] ? $images : null;
 
+        if ($images !== []) {
+            $index = (int) $request->input('thumbnail_index', 0);
+            if ($index < 0 || $index >= count($images)) {
+                $index = 0;
+            }
+            $data['thumbnail'] = $images[$index];
+        }
+
         $product = Product::query()->create($data);
 
         return redirect()
@@ -81,6 +89,15 @@ class ProductController extends Controller
 
         $paths = array_merge($paths, $this->storeImages($request->file('images', [])));
         $data['images'] = $paths !== [] ? $paths : null;
+
+        $chosen = $request->input('thumbnail');
+        if (is_string($chosen) && $chosen !== '' && in_array($chosen, $paths, true)) {
+            $data['thumbnail'] = $chosen;
+        } elseif ($paths === []) {
+            $data['thumbnail'] = null;
+        } elseif (! in_array((string) $product->thumbnail, $paths, true)) {
+            $data['thumbnail'] = $paths[0];
+        }
 
         $product->update($data);
 

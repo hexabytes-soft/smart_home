@@ -12,6 +12,7 @@ class Product extends Model
         'buy_price',
         'sell_price',
         'images',
+        'thumbnail',
     ];
 
     protected function casts(): array
@@ -32,6 +33,22 @@ class Product extends Model
     }
 
     /**
+     * Image paths with the selected thumbnail first (for galleries).
+     *
+     * @return list<string>
+     */
+    public function orderedImagePaths(): array
+    {
+        $paths = $this->imagePaths();
+        $thumb = $this->thumbnailPath();
+        if (! $thumb || count($paths) < 2) {
+            return $paths;
+        }
+
+        return array_values(array_unique(array_merge([$thumb], $paths)));
+    }
+
+    /**
      * Absolute public URL for a stored image path.
      * Uses the current request host/port in local (e.g. http://127.0.0.1:8000),
      * and APP_URL / ASSET_URL in production.
@@ -46,11 +63,31 @@ class Product extends Model
         return asset('storage/'.$path);
     }
 
+    public function thumbnailPath(): ?string
+    {
+        $paths = $this->imagePaths();
+        if ($paths === []) {
+            return null;
+        }
+
+        $thumbnail = $this->thumbnail;
+        if (is_string($thumbnail) && $thumbnail !== '' && in_array($thumbnail, $paths, true)) {
+            return $thumbnail;
+        }
+
+        return $paths[0];
+    }
+
     public function primaryImageUrl(): ?string
     {
-        $path = $this->imagePaths()[0] ?? null;
+        $path = $this->thumbnailPath();
 
         return $path ? $this->imageUrl($path) : null;
+    }
+
+    public function isThumbnail(string $path): bool
+    {
+        return $this->thumbnailPath() === $path;
     }
 
     /**
@@ -60,7 +97,7 @@ class Product extends Model
     {
         return array_map(
             fn (string $path) => $this->imageUrl($path),
-            $this->imagePaths()
+            $this->orderedImagePaths()
         );
     }
 }

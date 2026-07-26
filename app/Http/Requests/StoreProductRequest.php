@@ -23,6 +23,7 @@ class StoreProductRequest extends FormRequest
             'sell_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'images' => ['nullable', 'array'],
             'images.*' => ['image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'],
+            'thumbnail_index' => ['nullable', 'integer', 'min:0', 'max:50'],
         ];
     }
 }
