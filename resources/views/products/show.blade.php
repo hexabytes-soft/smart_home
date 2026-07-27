@@ -34,11 +34,23 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="rounded-xl border border-surface-700 bg-surface-800/40 p-4">
                         <p class="text-[11px] uppercase tracking-wide text-surface-500 mb-1">Buy price</p>
-                        <p class="text-xl font-semibold text-white">{{ $product->buy_price !== null ? number_format((float) $product->buy_price, 2) : '—' }}</p>
+                        <p class="text-xl font-semibold text-white">
+                            @if ($product->buy_price !== null)
+                                <x-omr :amount="$product->buy_price" />
+                            @else
+                                —
+                            @endif
+                        </p>
                     </div>
                     <div class="rounded-xl border border-surface-700 bg-surface-800/40 p-4">
                         <p class="text-[11px] uppercase tracking-wide text-surface-500 mb-1">Sell price</p>
-                        <p class="text-xl font-semibold text-emerald-300">{{ $product->sell_price !== null ? number_format((float) $product->sell_price, 2) : '—' }}</p>
+                        <p class="text-xl font-semibold text-emerald-300">
+                            @if ($product->sell_price !== null)
+                                <x-omr :amount="$product->sell_price" />
+                            @else
+                                —
+                            @endif
+                        </p>
                     </div>
                 </div>
             </div>

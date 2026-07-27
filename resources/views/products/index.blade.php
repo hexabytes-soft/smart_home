@@ -55,7 +55,7 @@
                             <span class="text-surface-500">
                                 Buy:
                                 @if ($product->buy_price !== null)
-                                    <x-omr :amount="$product->buy_price" :decimals="2" class="text-surface-300" />
+                                    <x-omr :amount="$product->buy_price" class="text-surface-300" />
                                 @else
                                     —
                                 @endif
@@ -63,7 +63,7 @@
                             <span class="text-brand-300 font-semibold inline-flex items-center gap-1">
                                 Sell:
                                 @if ($product->sell_price !== null)
-                                    <x-omr :amount="$product->sell_price" :decimals="2" />
+                                    <x-omr :amount="$product->sell_price" />
                                 @else
                                     <span class="text-amber-300">Add price</span>
                                 @endif

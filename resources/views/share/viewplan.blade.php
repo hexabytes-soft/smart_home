@@ -47,13 +47,20 @@
                         <svg class="animate-spin w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <span>Loading floor plan…</span>
                     </div>
+                    <div class="plan2d-zoom-controls" aria-label="Zoom controls">
+                        <button type="button" data-plan-zoom="in" class="plan2d-zoom-btn" title="Zoom in" aria-label="Zoom in">+</button>
+                        <button type="button" data-plan-zoom="out" class="plan2d-zoom-btn" title="Zoom out" aria-label="Zoom out">−</button>
+                        <button type="button" data-plan-zoom="fit" class="plan2d-zoom-btn plan2d-zoom-fit" title="Fit to view" aria-label="Fit to view">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <footer class="studio-statusbar">
             <span id="map-status" class="studio-status-hint">Loading 2D plan…</span>
-            <span class="studio-status-context text-surface-500">Scroll zoom · shift+drag pan · long-press device for details</span>
+            <span class="studio-status-context text-surface-500">Pinch or buttons to zoom · drag to pan · long-press device for details</span>
         </footer>
     </div>
     <div id="device-details-popover" class="device-details-popover hidden" role="dialog" aria-live="polite"></div>

@@ -28,12 +28,12 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <x-input-label for="buy_price" value="Buy price (optional, OMR)" />
-                            <x-text-input id="buy_price" name="buy_price" type="number" min="0" step="0.01" class="block mt-1.5 w-full" :value="old('buy_price', $product->buy_price)" placeholder="0.00" />
+                            <x-text-input id="buy_price" name="buy_price" type="number" min="0" step="0.001" class="block mt-1.5 w-full" :value="old('buy_price', $product->buy_price !== null ? number_format((float) $product->buy_price, 3, '.', '') : '')" placeholder="0.000" />
                             <x-input-error :messages="$errors->get('buy_price')" class="mt-2" />
                         </div>
                         <div>
                             <x-input-label for="sell_price" value="Sell price (required, OMR)" />
-                            <x-text-input id="sell_price" name="sell_price" type="number" min="0" step="0.01" class="block mt-1.5 w-full" :value="old('sell_price', $product->sell_price)" required placeholder="0.00" />
+                            <x-text-input id="sell_price" name="sell_price" type="number" min="0" step="0.001" class="block mt-1.5 w-full" :value="old('sell_price', $product->sell_price !== null ? number_format((float) $product->sell_price, 3, '.', '') : '')" required placeholder="0.000" />
                             <p class="mt-1 text-[11px] text-surface-500">Shown on the public store with the Omani Rial symbol.</p>
                             <x-input-error :messages="$errors->get('sell_price')" class="mt-2" />
                         </div>

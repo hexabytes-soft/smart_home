@@ -19,7 +19,7 @@ function formatPrice(amount) {
     if (amount == null || amount === '') return 'On request';
     const n = Number(amount);
     if (!Number.isFinite(n)) return 'On request';
-    return n.toFixed(2);
+    return n.toFixed(3);
 }
 
 function buildWhatsAppUrl(lines) {
@@ -32,7 +32,7 @@ function buildWhatsAppUrl(lines) {
         const p = Number(line.price);
         return sum + (Number.isFinite(p) ? p * line.qty : 0);
     }, 0);
-    const footer = total > 0 ? `\n\nالإجمالي التقريبي: ${total.toFixed(2)} OMR` : '';
+    const footer = total > 0 ? `\n\nالإجمالي التقريبي: ${total.toFixed(3)} OMR` : '';
     const text = `${header}\n\n${body}${footer}`;
     return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
 }

@@ -86,7 +86,7 @@
                         <p class="sf-cart-item-title" x-text="item.title"></p>
                         <p class="sf-cart-item-price">
                             <span class="omr-symbol" role="img" aria-label="OMR" style="--omr-mask: url('{{ asset('images/omr-symbol.png') }}')"></span>
-                            <span x-text="item.price != null ? Number(item.price).toFixed(2) : 'On request'"></span>
+                            <span x-text="item.price != null ? Number(item.price).toFixed(3) : 'On request'"></span>
                         </p>
                     </div>
                     <div class="sf-cart-item-actions">
@@ -109,7 +109,7 @@
                 <span>Subtotal</span>
                 <span class="inline-flex items-center gap-1">
                     <span class="omr-symbol" role="img" aria-label="OMR" style="--omr-mask: url('{{ asset('images/omr-symbol.png') }}')"></span>
-                    <span x-text="Number($store.cart.subtotal).toFixed(2)"></span>
+                    <span x-text="Number($store.cart.subtotal).toFixed(3)"></span>
                 </span>
             </div>
             <button type="button" class="sf-btn sf-btn-primary w-full justify-center" @click="$store.cart.checkoutWhatsApp()">

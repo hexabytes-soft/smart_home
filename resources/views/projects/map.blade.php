@@ -121,6 +121,13 @@
                             Loading studio…
                         </div>
                     </div>
+                    <div class="plan2d-zoom-controls" aria-label="Zoom controls">
+                        <button type="button" data-plan-zoom="in" class="plan2d-zoom-btn" title="Zoom in" aria-label="Zoom in">+</button>
+                        <button type="button" data-plan-zoom="out" class="plan2d-zoom-btn" title="Zoom out" aria-label="Zoom out">−</button>
+                        <button type="button" data-plan-zoom="fit" class="plan2d-zoom-btn plan2d-zoom-fit" title="Fit to view" aria-label="Fit to view">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -40,6 +40,8 @@ export class Plan2DRenderer {
         this.visible = false;
         this._underlayCache = {};
         this._underlayLoading = {};
+        this._pointers = new Map();
+        this._pinch = null;
         this.hide();
     }
 
@@ -184,21 +186,104 @@ export class Plan2DRenderer {
         return [(sx - this.panX) / this.zoom, (sy - this.panY) / this.zoom];
     }
 
-  onWheel(event) {
-        event.preventDefault();
-        const rect = this.canvas.getBoundingClientRect();
-        const sx = event.clientX - rect.left;
-        const sy = event.clientY - rect.top;
+    maxZoom() {
+        return 120;
+    }
+
+    clampZoom(value) {
+        const z = Number(value);
+        if (!Number.isFinite(z) || z <= 0) return this.minZoom();
+        return Math.max(this.minZoom(), Math.min(this.maxZoom(), z));
+    }
+
+    /**
+     * Zoom toward a screen point (canvas-local coords). factor > 1 zooms in.
+     */
+    zoomAt(sx, sy, factor) {
         const [wx, wz] = this.screenToWorld(sx, sy);
-        const factor = event.deltaY < 0 ? 1.08 : 0.92;
-        this.zoom = Math.max(this.minZoom(), Math.min(120, this.zoom * factor));
+        this.zoom = this.clampZoom(this.zoom * factor);
         const [nx, nz] = this.worldToScreen(wx, wz);
         this.panX += sx - nx;
         this.panY += sy - nz;
     }
 
-    onPointerDown(event) {
-        if (event.button === 1 || event.button === 2 || event.altKey || event.button === 0 && event.shiftKey) {
+    zoomBy(factor, center = null) {
+        const sx = center?.sx ?? (this.viewW || 1) / 2;
+        const sy = center?.sy ?? (this.viewH || 1) / 2;
+        this.zoomAt(sx, sy, factor);
+    }
+
+    onWheel(event) {
+        event.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        const sx = event.clientX - rect.left;
+        const sy = event.clientY - rect.top;
+        const factor = event.deltaY < 0 ? 1.08 : 0.92;
+        this.zoomAt(sx, sy, factor);
+    }
+
+    pointerCount() {
+        return this._pointers.size;
+    }
+
+    updatePointer(event) {
+        this._pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    removePointer(event) {
+        this._pointers.delete(event.pointerId);
+        if (this._pointers.size < 2) this._pinch = null;
+    }
+
+    clearPointers() {
+        this._pointers.clear();
+        this._pinch = null;
+        this.isPanning = false;
+    }
+
+    pinchDistance() {
+        if (this._pointers.size < 2) return 0;
+        const pts = [...this._pointers.values()];
+        return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
+
+    pinchCenter() {
+        const rect = this.canvas.getBoundingClientRect();
+        const pts = [...this._pointers.values()];
+        const cx = (pts[0].x + pts[1].x) / 2;
+        const cy = (pts[0].y + pts[1].y) / 2;
+        return { sx: cx - rect.left, sy: cy - rect.top, clientX: cx, clientY: cy };
+    }
+
+    /**
+     * Start pan or pinch. Returns true if the gesture consumed the event.
+     * @param {{ allowFingerPan?: boolean }} opts
+     */
+    onPointerDown(event, opts = {}) {
+        this.updatePointer(event);
+
+        if (this._pointers.size >= 2) {
+            this.isPanning = false;
+            const dist = this.pinchDistance();
+            const center = this.pinchCenter();
+            this._pinch = {
+                startDist: Math.max(dist, 1),
+                startZoom: this.zoom,
+                lastCenter: center,
+            };
+            try { this.canvas.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+            return true;
+        }
+
+        const allowFingerPan = opts.allowFingerPan === true;
+        const isTouchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
+        const canPan = event.button === 1
+            || event.button === 2
+            || event.altKey
+            || (event.button === 0 && event.shiftKey)
+            || (allowFingerPan && isTouchLike && event.button === 0);
+
+        if (canPan) {
             this.isPanning = true;
             this.lastPan = { x: event.clientX, y: event.clientY };
             try { this.canvas.setPointerCapture(event.pointerId); } catch { /* ignore */ }
@@ -208,14 +293,51 @@ export class Plan2DRenderer {
     }
 
     onPointerMove(event) {
-        if (!this.isPanning) return;
+        if (!this._pointers.has(event.pointerId) && !this.isPanning && !this._pinch) return false;
+        this.updatePointer(event);
+
+        if (this._pointers.size >= 2) {
+            const dist = this.pinchDistance();
+            const center = this.pinchCenter();
+            if (!this._pinch) {
+                this._pinch = {
+                    startDist: Math.max(dist, 1),
+                    startZoom: this.zoom,
+                    lastCenter: center,
+                };
+                this.isPanning = false;
+                return true;
+            }
+
+            const ratio = dist / this._pinch.startDist;
+            const nextZoom = this.clampZoom(this._pinch.startZoom * ratio);
+            const [wx, wz] = this.screenToWorld(center.sx, center.sy);
+            this.zoom = nextZoom;
+            const [nx, nz] = this.worldToScreen(wx, wz);
+            this.panX += center.sx - nx;
+            this.panY += center.sy - nz;
+
+            // Two-finger pan while pinching
+            const last = this._pinch.lastCenter;
+            this.panX += center.sx - last.sx;
+            this.panY += center.sy - last.sy;
+            this._pinch.lastCenter = center;
+            this.isPanning = false;
+            return true;
+        }
+
+        if (!this.isPanning) return false;
         this.panX += event.clientX - this.lastPan.x;
         this.panY += event.clientY - this.lastPan.y;
         this.lastPan = { x: event.clientX, y: event.clientY };
+        return true;
     }
 
-    onPointerUp() {
-        this.isPanning = false;
+    onPointerUp(event) {
+        if (event) this.removePointer(event);
+        else this.clearPointers();
+        if (this._pointers.size === 0) this.isPanning = false;
+        if (this._pointers.size < 2) this._pinch = null;
     }
 
     hitTest(floor, sx, sy) {
@@ -635,7 +757,7 @@ export class Plan2DRenderer {
         ctx.textAlign = 'left';
         ctx.fillText(floorLabel || 'Floor plan', 12, h - 12);
         ctx.textAlign = 'right';
-        ctx.fillText(`${projectWidth}×${projectDepth} m · scroll zoom · shift+drag pan`, w - 12, h - 12);
+        ctx.fillText(`${projectWidth}×${projectDepth} m · pinch / buttons zoom · drag pan`, w - 12, h - 12);
     }
 
     drawGrid(ctx, pw, pd) {

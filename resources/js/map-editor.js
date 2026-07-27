@@ -509,19 +509,29 @@ export class MapEditor {
     bindPlan2dEvents() {
         if (!this.plan2d) return;
         const canvas = this.plan2d.canvas;
+        canvas.style.touchAction = 'none';
+
         canvas.addEventListener('wheel', (e) => {
             if (this.viewMode !== 'plan2d') return;
             this.plan2d.onWheel(e);
             this.renderPlan2d();
         }, { passive: false });
+
         canvas.addEventListener('pointerdown', (e) => {
             if (this.viewMode !== 'plan2d') return;
             // Closing first so any new tap (map empty space / other device) hides the popup.
             this.hideDeviceDetails();
-            this.startSmartLongPress(e);
-            if (this.plan2d.onPointerDown(e)) return;
+            const allowFingerPan = this.viewerOnly || this.tool === 'select' || !this.canEdit;
+            if (this.plan2d.pointerCount() === 0) {
+                this.startSmartLongPress(e);
+            }
+            if (this.plan2d.onPointerDown(e, { allowFingerPan })) {
+                this.clearSmartLongPress();
+                return;
+            }
             this.onPointerDown(e);
         });
+
         canvas.addEventListener('pointermove', (e) => {
             if (this.viewMode !== 'plan2d') return;
             if (this.longPressTimer) {
@@ -532,23 +542,27 @@ export class MapEditor {
                     this.clearSmartLongPress();
                 }
             }
-            this.plan2d.onPointerMove(e);
-            if (this.plan2d.isPanning) {
+            const handled = this.plan2d.onPointerMove(e);
+            if (handled || this.plan2d.isPanning || this.plan2d._pinch) {
+                this.clearSmartLongPress();
                 this.renderPlan2d();
                 return;
             }
             this.onPointerMove(e);
         });
-        canvas.addEventListener('pointerup', () => {
+
+        canvas.addEventListener('pointerup', (e) => {
             const fired = this.longPressFired;
             this.clearSmartLongPress();
-            this.plan2d?.onPointerUp();
+            this.plan2d?.onPointerUp(e);
             if (!fired) this.hideDeviceDetails();
+            this.renderPlan2d();
         });
-        canvas.addEventListener('pointercancel', () => {
+        canvas.addEventListener('pointercancel', (e) => {
             this.clearSmartLongPress();
-            this.plan2d?.onPointerUp();
+            this.plan2d?.onPointerUp(e);
             this.hideDeviceDetails();
+            this.renderPlan2d();
         });
         canvas.addEventListener('dblclick', (e) => {
             if (this.viewMode !== 'plan2d' || !this.canEdit) return;
@@ -578,6 +592,48 @@ export class MapEditor {
             document.addEventListener('pointerdown', dismissIfOutside, true);
             document.addEventListener('click', dismissIfOutside, true);
         }
+
+        this.bindPlan2dZoomControls();
+    }
+
+    bindPlan2dZoomControls() {
+        const zoomIn = () => {
+            if (this.viewMode !== 'plan2d' || !this.plan2d) return;
+            this.plan2d.zoomBy(1.2);
+            this.renderPlan2d();
+            this.setStatus('Zoomed in');
+        };
+        const zoomOut = () => {
+            if (this.viewMode !== 'plan2d' || !this.plan2d) return;
+            this.plan2d.zoomBy(1 / 1.2);
+            this.renderPlan2d();
+            this.setStatus('Zoomed out');
+        };
+        const zoomFit = () => {
+            if (this.viewMode !== 'plan2d' || !this.plan2d) return;
+            this.ensurePlan2dLayout();
+            this.renderPlan2d();
+            this.setStatus('Fit to view');
+        };
+
+        this.root.querySelectorAll('[data-plan-zoom="in"]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                zoomIn();
+            });
+        });
+        this.root.querySelectorAll('[data-plan-zoom="out"]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                zoomOut();
+            });
+        });
+        this.root.querySelectorAll('[data-plan-zoom="fit"]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                zoomFit();
+            });
+        });
     }
 
     startSmartLongPress(event) {
@@ -1163,6 +1219,9 @@ export class MapEditor {
         } else {
             this.plan2d?.hide();
         }
+        this.root.querySelectorAll('.plan2d-zoom-controls').forEach((el) => {
+            el.classList.toggle('hidden', !isPlan2d);
+        });
 
         this.controls.enabled = isStudio;
         this.pointerLock.unlock();
@@ -1177,7 +1236,7 @@ export class MapEditor {
         } else if (isPlan2d) {
             this.renderPlan2d();
             if (!this.viewerOnly) this.setTool(this.tool || 'select');
-            this.setStatus('2D plan — import image, place devices · shift+drag pan');
+            this.setStatus('2D plan — pinch / buttons zoom · drag pan · place devices');
         }
     }
 
@@ -1640,7 +1699,7 @@ export class MapEditor {
             return;
         }
         if (!this.canEdit) return;
-        if (this.viewMode === 'plan2d' && this.plan2d?.isPanning) return;
+        if (this.viewMode === 'plan2d' && (this.plan2d?.isPanning || this.plan2d?._pinch)) return;
 
         if (this.tool === 'wall') {
             const pt = this.getWorldPoint(event);

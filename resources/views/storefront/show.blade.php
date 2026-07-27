@@ -69,7 +69,7 @@
 
                 <p class="sf-detail-price {{ $product->sell_price === null ? 'sf-price-muted' : '' }}">
                     @if ($product->sell_price !== null)
-                        <x-omr :amount="$product->sell_price" :decimals="2" />
+                        <x-omr :amount="$product->sell_price" />
                     @else
                         Price on request
                     @endif
@@ -117,7 +117,7 @@
                             <h3 class="sf-product-title">{{ $item->title }}</h3>
                             <p class="{{ $item->sell_price !== null ? 'sf-price' : 'sf-price-muted' }}">
                                 @if ($item->sell_price !== null)
-                                    <x-omr :amount="$item->sell_price" :decimals="2" />
+                                    <x-omr :amount="$item->sell_price" />
                                 @else
                                     On request
                                 @endif

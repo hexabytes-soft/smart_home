@@ -683,6 +683,59 @@ img.omr-symbol {
     @apply absolute inset-0 z-10 touch-none;
 }
 
+.plan2d-zoom-controls {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.plan2d-zoom-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.88);
+    color: #f8fafc;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.plan2d-zoom-btn:hover {
+    background: rgba(8, 145, 178, 0.35);
+    border-color: rgba(34, 211, 238, 0.55);
+}
+
+.plan2d-zoom-btn:active {
+    transform: scale(0.96);
+}
+
+.plan2d-zoom-fit {
+    font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+    .plan2d-zoom-controls {
+        right: 0.6rem;
+        bottom: 0.6rem;
+    }
+
+    .plan2d-zoom-btn {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
+
 .plan2d-label-editor {
     @apply absolute z-20 min-w-[8rem] max-w-[min(20rem,70vw)] rounded-lg border border-brand-400/60 bg-[#0f172a]/95 px-2.5 py-2 text-sm text-white shadow-lg backdrop-blur-sm outline-none resize-none;
     font-family: Inter, system-ui, sans-serif;
