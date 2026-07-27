@@ -84,11 +84,15 @@ class SmartComponentController extends Controller
 
         $validated = $request->validate([
             'price' => ['required', 'numeric', 'min:0', 'max:999999'],
+            'buy_price' => ['required', 'numeric', 'min:0', 'max:999999'],
         ]);
 
-        $smartComponent->update(['price' => $validated['price']]);
+        $smartComponent->update([
+            'price' => $validated['price'],
+            'buy_price' => $validated['buy_price'],
+        ]);
 
-        return back()->with('status', "{$smartComponent->name} price updated.");
+        return back()->with('status', "{$smartComponent->name} prices updated.");
     }
 
     public function destroy(SmartComponent $smartComponent): RedirectResponse
@@ -112,6 +116,7 @@ class SmartComponentController extends Controller
             'key' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9_]*$/'],
             'icon' => ['nullable', 'string', 'max:64'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999'],
+            'buy_price' => ['required', 'numeric', 'min:0', 'max:999999'],
             'mount' => ['required', 'in:ceiling,wall,floor,door'],
             'model' => ['nullable', 'string', 'max:120'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],

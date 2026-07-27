@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('smart-components.updatePrice');
     Route::get('projects/{project}/map', [ProjectController::class, 'map'])->name('projects.map');
     Route::put('projects/{project}/map', [ProjectController::class, 'updateMap'])->name('projects.map.update');
+    Route::put('projects/{project}/benefits', [ProjectController::class, 'updateBenefits'])->name('projects.benefits.update');
     Route::post('projects/{project}/map/import-plan', [ProjectController::class, 'importFloorPlan'])
         ->name('projects.map.import');
     Route::post('projects/{project}/map/import-json', [ProjectController::class, 'importFloorPlanJson'])
@@ -76,3 +77,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+require __DIR__.'/ha-ai.php';

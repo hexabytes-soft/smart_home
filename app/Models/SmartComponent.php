@@ -12,6 +12,7 @@ class SmartComponent extends Model
         'name',
         'icon',
         'price',
+        'buy_price',
         'mount',
         'model',
         'sort_order',
@@ -22,6 +23,7 @@ class SmartComponent extends Model
     {
         return [
             'price' => 'decimal:3',
+            'buy_price' => 'decimal:3',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
@@ -40,7 +42,7 @@ class SmartComponent extends Model
     /**
      * Shape used by the map studio catalog.
      *
-     * @return array{key: string, name: string, icon: string, price: float, mount: string, model: ?string}
+     * @return array{key: string, name: string, icon: string, price: float, buy_price: float, mount: string, model: ?string}
      */
     public function toCatalogItem(): array
     {
@@ -49,6 +51,7 @@ class SmartComponent extends Model
             'name' => $this->name,
             'icon' => $this->icon ?: '●',
             'price' => (float) $this->price,
+            'buy_price' => (float) $this->buy_price,
             'mount' => $this->mount ?: 'wall',
             'model' => $this->model,
         ];

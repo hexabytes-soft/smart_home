@@ -39,7 +39,10 @@
                             <th class="px-4 py-3 font-medium">Key</th>
                             <th class="px-4 py-3 font-medium">Mount</th>
                             <th class="px-4 py-3 font-medium">
-                                <span class="inline-flex items-center gap-1">Price <x-omr /></span>
+                                <span class="inline-flex items-center gap-1">Buy <x-omr /></span>
+                            </th>
+                            <th class="px-4 py-3 font-medium">
+                                <span class="inline-flex items-center gap-1">Sell <x-omr /></span>
                             </th>
                             <th class="px-4 py-3 font-medium">Status</th>
                             <th class="px-4 py-3 font-medium text-right">Actions</th>
@@ -59,16 +62,20 @@
                                 </td>
                                 <td class="px-4 py-3 text-xs font-mono text-surface-400">{{ $component->key }}</td>
                                 <td class="px-4 py-3 text-xs text-surface-300 capitalize">{{ $component->mount }}</td>
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-3" colspan="2">
                                     @can('update', $component)
-                                        <form method="POST" action="{{ route('smart-components.updatePrice', $component) }}" class="flex items-center gap-2">
+                                        <form method="POST" action="{{ route('smart-components.updatePrice', $component) }}" class="flex flex-wrap items-center gap-2">
                                             @csrf
                                             @method('PATCH')
-                                            <input type="number" name="price" min="0" step="0.001" value="{{ number_format((float) $component->price, 3, '.', '') }}" class="w-28 rounded-lg border-surface-700 bg-surface-900 text-sm text-white font-mono">
+                                            <input type="number" name="buy_price" min="0" step="0.001" title="Buy" value="{{ number_format((float) $component->buy_price, 3, '.', '') }}" class="w-24 rounded-lg border-surface-700 bg-surface-900 text-sm text-white font-mono">
+                                            <input type="number" name="price" min="0" step="0.001" title="Sell" value="{{ number_format((float) $component->price, 3, '.', '') }}" class="w-24 rounded-lg border-surface-700 bg-surface-900 text-sm text-white font-mono">
                                             <button type="submit" class="btn-secondary text-[10px] py-1.5 px-2">Save</button>
                                         </form>
                                     @else
-                                        <span class="font-mono text-sm text-brand-300"><x-omr :amount="$component->price" /></span>
+                                        <div class="flex items-center gap-4 font-mono text-sm">
+                                            <span class="text-surface-300"><x-omr :amount="$component->buy_price" /></span>
+                                            <span class="text-brand-300"><x-omr :amount="$component->price" /></span>
+                                        </div>
                                     @endcan
                                 </td>
                                 <td class="px-4 py-3">
@@ -95,7 +102,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-12 text-center text-surface-400">
+                                <td colspan="7" class="px-4 py-12 text-center text-surface-400">
                                     No smart components yet.
                                     @can('create', App\Models\SmartComponent::class)
                                         <a href="{{ route('smart-components.create') }}" class="text-brand-400 hover:text-brand-300">Add the first one →</a>

@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Models\SmartComponent;
 use App\Services\FloorPlan\FloorPlanImportService;
+use App\Services\ProjectBenefitCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ use Throwable;
 
 class ProjectController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, ProjectBenefitCalculator $benefits): View
     {
         $this->authorize('viewAny', Project::class);
 
@@ -33,7 +34,13 @@ class ProjectController extends Controller
             ->latest()
             ->paginate(12);
 
-        return view('projects.index', compact('projects'));
+        $catalog = SmartComponent::query()->get()->keyBy('key');
+        $projectBenefits = [];
+        foreach ($projects as $project) {
+            $projectBenefits[$project->id] = $benefits->calculate($project, $catalog);
+        }
+
+        return view('projects.index', compact('projects', 'projectBenefits'));
     }
 
     public function create(): View
@@ -56,11 +63,36 @@ class ProjectController extends Controller
             ->with('status', 'Project created. Start building your map.');
     }
 
-    public function show(Project $project): View
+    public function show(Project $project, ProjectBenefitCalculator $benefits): View
     {
         $this->authorize('view', $project);
 
-        return view('projects.show', compact('project'));
+        $benefitStats = $benefits->calculate($project);
+
+        return view('projects.show', compact('project', 'benefitStats'));
+    }
+
+    public function updateBenefits(Request $request, Project $project, ProjectBenefitCalculator $benefits): RedirectResponse
+    {
+        $this->authorize('editMap', $project);
+
+        $validated = $request->validate([
+            'extra_expenses' => ['nullable', 'array'],
+            'extra_expenses.*.id' => ['nullable', 'string', 'max:64'],
+            'extra_expenses.*.name' => ['nullable', 'string', 'max:120'],
+            'extra_expenses.*.price' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+        ]);
+
+        $mapData = $project->map_data ?? [];
+        $mapData['benefits'] = [
+            'extra_expenses' => $benefits->normalizeExtraExpenses($validated['extra_expenses'] ?? []),
+        ];
+        $project->update(['map_data' => $mapData]);
+
+        return redirect()
+            ->route('projects.show', $project)
+            ->withFragment('benefits')
+            ->with('status', 'مصاريف إضافية updated.');
     }
 
     public function edit(Project $project): View

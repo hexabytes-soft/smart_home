@@ -65,6 +65,9 @@
                     <button type="button" id="quotation-btn" class="studio-btn-icon hidden sm:inline-flex" title="Quotation / Invoice">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 7h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2z"/></svg>
                     </button>
+                    <button type="button" id="benefits-btn" class="studio-btn-icon hidden sm:inline-flex" title="Benefits / الأرباح">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </button>
                     <button type="button" id="share-viewer-btn" class="studio-btn-icon hidden sm:inline-flex" title="Share public plan URL">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
                     </button>
@@ -287,6 +290,33 @@
                     </div>
 
                     <div id="quotation-totals" class="rounded-xl border border-surface-700 bg-surface-800/40 p-4 space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="benefits-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div class="w-full max-w-3xl rounded-2xl border border-surface-700 bg-surface-900 shadow-2xl max-h-[92vh] overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-surface-800 shrink-0">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">الأرباح · Benefits</h3>
+                        <p class="text-[11px] text-surface-500 mt-0.5">{{ $project->name }} · buy / sell / profit</p>
+                    </div>
+                    <button type="button" data-benefits-close class="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition-colors" aria-label="Close">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="p-5 overflow-y-auto studio-scroll flex-1 space-y-4">
+                    <div id="benefits-stats" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+                    <div id="benefits-lines" class="rounded-xl border border-surface-700 overflow-hidden"></div>
+                    <div class="rounded-xl border border-surface-700 bg-surface-800/30 p-3 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-[11px] font-semibold text-surface-200">مصاريف إضافية / Extra expenses</p>
+                            <button type="button" id="benefits-add-expense-btn" class="btn-secondary text-[10px] py-1 px-2.5">+ Add</button>
+                        </div>
+                        <div id="benefits-expenses" class="space-y-2"></div>
+                        <p class="text-[10px] text-surface-500">Saved with the map. Programming &amp; installation come from the quotation.</p>
+                    </div>
+                    <div id="benefits-totals" class="rounded-xl border border-surface-700 bg-surface-800/40 p-4 space-y-2"></div>
                 </div>
             </div>
         </div>

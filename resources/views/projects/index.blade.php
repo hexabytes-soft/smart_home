@@ -56,11 +56,31 @@
                             </span>
                             <span>{{ $project->floors_count }} floor(s)</span>
                         </div>
+                        @php $stats = $projectBenefits[$project->id] ?? null; @endphp
+                        @if ($stats)
+                            <div class="grid grid-cols-3 gap-2 text-[11px]">
+                                <div class="rounded-lg bg-surface-950/60 border border-surface-800 px-2 py-1.5">
+                                    <p class="text-surface-500">Buy</p>
+                                    <p class="font-mono text-surface-200"><x-omr :amount="$stats['total_buy']" class="gap-0.5" /></p>
+                                </div>
+                                <div class="rounded-lg bg-surface-950/60 border border-surface-800 px-2 py-1.5">
+                                    <p class="text-surface-500">Sell</p>
+                                    <p class="font-mono text-emerald-300"><x-omr :amount="$stats['total_sell']" class="gap-0.5" /></p>
+                                </div>
+                                <div class="rounded-lg bg-brand-500/10 border border-brand-500/25 px-2 py-1.5">
+                                    <p class="text-brand-300/80">Benefit</p>
+                                    <p class="font-mono {{ $stats['total_benefit'] >= 0 ? 'text-brand-300' : 'text-rose-300' }}"><x-omr :amount="$stats['total_benefit']" class="gap-0.5" /></p>
+                                </div>
+                            </div>
+                        @endif
                         <div class="flex gap-2 pt-1">
                             <a href="{{ route('projects.map', $project) }}" class="btn-primary flex-1 text-center text-xs py-2.5">
                                 Open Map
                             </a>
-                            <a href="{{ route('projects.show', $project) }}" class="btn-secondary flex-1 text-center text-xs py-2.5">
+                            <a href="{{ route('projects.show', $project) }}#benefits" class="btn-secondary flex-1 text-center text-xs py-2.5">
+                                Benefits
+                            </a>
+                            <a href="{{ route('projects.show', $project) }}" class="btn-secondary text-center text-xs py-2.5 px-3" title="Details">
                                 Details
                             </a>
                             @can('update', $project)

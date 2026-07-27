@@ -16,7 +16,33 @@
         <x-input-error :messages="$errors->get('icon')" class="mt-2" />
     </div>
     <div>
-        <x-input-label for="price" value="Price (OMR)" />
+        <x-input-label for="mount" value="Mount" />
+        <select id="mount" name="mount" class="input-dark block mt-1.5 w-full">
+            @foreach (['ceiling' => 'Ceiling', 'wall' => 'Wall', 'floor' => 'Floor', 'door' => 'Door'] as $value => $label)
+                <option value="{{ $value }}" @selected(old('mount', $smartComponent?->mount ?? 'wall') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+        <x-input-error :messages="$errors->get('mount')" class="mt-2" />
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <div>
+        <x-input-label for="buy_price" value="Buy price (OMR)" />
+        <x-text-input
+            id="buy_price"
+            name="buy_price"
+            type="number"
+            min="0"
+            step="0.001"
+            class="block mt-1.5 w-full"
+            :value="old('buy_price', $smartComponent ? number_format((float) $smartComponent->buy_price, 3, '.', '') : '0.000')"
+            required
+        />
+        <x-input-error :messages="$errors->get('buy_price')" class="mt-2" />
+    </div>
+    <div>
+        <x-input-label for="price" value="Sell price (OMR)" />
         <x-text-input
             id="price"
             name="price"
@@ -33,33 +59,22 @@
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
     <div>
-        <x-input-label for="mount" value="Mount" />
-        <select id="mount" name="mount" class="input-dark block mt-1.5 w-full">
-            @foreach (['ceiling' => 'Ceiling', 'wall' => 'Wall', 'floor' => 'Floor', 'door' => 'Door'] as $value => $label)
-                <option value="{{ $value }}" @selected(old('mount', $smartComponent?->mount ?? 'wall') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
-        <x-input-error :messages="$errors->get('mount')" class="mt-2" />
-    </div>
-    <div>
         <x-input-label for="model" value="Model (optional)" />
         <x-text-input id="model" name="model" class="block mt-1.5 w-full" :value="old('model', $smartComponent?->model)" placeholder="Dome Camera" />
         <x-input-error :messages="$errors->get('model')" class="mt-2" />
     </div>
-</div>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
     <div>
         <x-input-label for="key" value="Key (optional)" />
         <x-text-input id="key" name="key" class="block mt-1.5 w-full font-mono text-sm" :value="old('key', $smartComponent?->key)" placeholder="camera" />
         <p class="mt-1 text-[11px] text-surface-500">Lowercase id used in maps. Auto-generated from name if empty.</p>
         <x-input-error :messages="$errors->get('key')" class="mt-2" />
     </div>
-    <div>
-        <x-input-label for="sort_order" value="Sort order" />
-        <x-text-input id="sort_order" name="sort_order" type="number" min="0" class="block mt-1.5 w-full" :value="old('sort_order', $smartComponent?->sort_order ?? 0)" />
-        <x-input-error :messages="$errors->get('sort_order')" class="mt-2" />
-    </div>
+</div>
+
+<div>
+    <x-input-label for="sort_order" value="Sort order" />
+    <x-text-input id="sort_order" name="sort_order" type="number" min="0" class="block mt-1.5 w-full max-w-xs" :value="old('sort_order', $smartComponent?->sort_order ?? 0)" />
+    <x-input-error :messages="$errors->get('sort_order')" class="mt-2" />
 </div>
 
 <label class="flex items-center gap-2 text-sm text-surface-200">

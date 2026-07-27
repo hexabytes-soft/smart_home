@@ -177,6 +177,13 @@ export class MapEditor {
         this.quotationSaveDefaultsBtn = document.querySelector('#quotation-save-defaults-btn');
         this.quotationPrintBtn = document.querySelector('#quotation-print-btn');
         this.quotationDefaultsKey = 'smart_home_quotation_service_defaults';
+        this.benefitsBtn = document.querySelector('#benefits-btn');
+        this.benefitsModal = document.querySelector('#benefits-modal');
+        this.benefitsStatsEl = document.querySelector('#benefits-stats');
+        this.benefitsLinesEl = document.querySelector('#benefits-lines');
+        this.benefitsExpensesEl = document.querySelector('#benefits-expenses');
+        this.benefitsTotalsEl = document.querySelector('#benefits-totals');
+        this.benefitsAddExpenseBtn = document.querySelector('#benefits-add-expense-btn');
         this.activeFloorIndex = Number(this.mapData.active_floor) || 0;
 
         this.viewMode = this.initialViewMode;
@@ -947,6 +954,42 @@ export class MapEditor {
         this.quotationInstallationInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationSaveDefaultsBtn?.addEventListener('click', () => this.saveQuotationServiceDefaults());
         this.quotationPrintBtn?.addEventListener('click', () => this.printQuotation());
+
+        this.benefitsBtn?.addEventListener('click', () => this.openBenefitsModal());
+        document.querySelectorAll('[data-benefits-close]').forEach((btn) => {
+            btn.addEventListener('click', () => this.closeBenefitsModal());
+        });
+        this.benefitsModal?.addEventListener('click', (e) => {
+            if (e.target === this.benefitsModal) this.closeBenefitsModal();
+        });
+        this.benefitsAddExpenseBtn?.addEventListener('click', () => {
+            this.ensureBenefitsMeta();
+            this.mapData.benefits.extra_expenses.push({
+                id: `exp_${Date.now()}`,
+                name: '',
+                price: 0,
+            });
+            this.renderBenefits();
+        });
+        this.benefitsExpensesEl?.addEventListener('input', (e) => {
+            const row = e.target.closest('[data-expense-index]');
+            if (!row) return;
+            const index = Number(row.dataset.expenseIndex);
+            this.ensureBenefitsMeta();
+            const expense = this.mapData.benefits.extra_expenses[index];
+            if (!expense) return;
+            if (e.target.dataset.field === 'name') expense.name = e.target.value;
+            if (e.target.dataset.field === 'price') expense.price = Math.max(0, Number(e.target.value) || 0);
+            this.renderBenefitsTotalsOnly();
+        });
+        this.benefitsExpensesEl?.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-expense-remove]');
+            if (!btn) return;
+            const index = Number(btn.dataset.expenseRemove);
+            this.ensureBenefitsMeta();
+            this.mapData.benefits.extra_expenses.splice(index, 1);
+            this.renderBenefits();
+        });
 
         this.floorSwitcherEl?.addEventListener('click', (e) => {
             if (e.target.closest('[data-floor-add]')) {
@@ -3356,6 +3399,8 @@ export class MapEditor {
         if (modeInput) {
             modeInput.value = this.viewMode === 'plan2d' ? '2d' : this.viewMode === 'view360' ? '360' : '3d';
         }
+        this.persistQuotationMeta();
+        this.persistBenefitsMeta();
         if (this.input) this.input.value = JSON.stringify(this.mapData);
         if (this.widthInput) this.widthInput.value = String(Math.round(this.projectWidth) || 20);
         if (this.depthInput) this.depthInput.value = String(Math.round(this.projectDepth) || 15);
@@ -3674,6 +3719,246 @@ export class MapEditor {
     closeQuotationModal() {
         this.persistQuotationMeta();
         this.quotationModal?.classList.add('hidden');
+    }
+
+    ensureBenefitsMeta() {
+        if (!this.mapData.benefits || typeof this.mapData.benefits !== 'object') {
+            this.mapData.benefits = { extra_expenses: [] };
+        }
+        if (!Array.isArray(this.mapData.benefits.extra_expenses)) {
+            this.mapData.benefits.extra_expenses = [];
+        }
+    }
+
+    persistBenefitsMeta() {
+        this.ensureBenefitsMeta();
+        this.mapData.benefits = {
+            extra_expenses: this.mapData.benefits.extra_expenses
+                .map((expense) => ({
+                    id: expense.id || `exp_${Date.now()}`,
+                    name: String(expense.name || '').trim() || 'مصروف',
+                    price: Math.round(Math.max(0, Number(expense.price) || 0) * 1000) / 1000,
+                }))
+                .filter((expense) => expense.name !== 'مصروف' || expense.price > 0),
+        };
+    }
+
+    openBenefitsModal() {
+        if (!this.benefitsModal) return;
+        this.ensureBenefitsMeta();
+        this.renderBenefits();
+        this.benefitsModal.classList.remove('hidden');
+    }
+
+    closeBenefitsModal() {
+        this.persistBenefitsMeta();
+        this.benefitsModal?.classList.add('hidden');
+    }
+
+    collectBenefitLines() {
+        const counts = new Map();
+
+        for (const floor of this.mapData.floors || []) {
+            for (const device of floor.smart_devices || []) {
+                const type = device.type;
+                const spec = SMART_CATALOG[type] || {};
+                const catalogSell = Number(spec.price);
+                const sell = Number.isFinite(catalogSell)
+                    ? catalogSell
+                    : deviceUnitPrice(type, device);
+                const buy = Math.max(0, Number(spec.buy_price) || 0);
+                const key = `${type}::${buy.toFixed(3)}::${sell.toFixed(3)}`;
+                const existing = counts.get(key);
+                if (existing) {
+                    existing.qty += 1;
+                } else {
+                    counts.set(key, {
+                        type,
+                        icon: spec.icon || '●',
+                        name: spec.label || type,
+                        buy,
+                        sell,
+                        qty: 1,
+                    });
+                }
+            }
+        }
+
+        const orderIndex = new Map(SMART_CATALOG_ORDER.map((k, i) => [k, i]));
+        return [...counts.values()]
+            .map((line) => {
+                const buyTotal = Math.round(line.buy * line.qty * 1000) / 1000;
+                const sellTotal = Math.round(line.sell * line.qty * 1000) / 1000;
+                return {
+                    ...line,
+                    buyTotal,
+                    sellTotal,
+                    benefit: Math.round((sellTotal - buyTotal) * 1000) / 1000,
+                };
+            })
+            .sort((a, b) => (orderIndex.get(a.type) ?? 999) - (orderIndex.get(b.type) ?? 999)
+                || a.sell - b.sell);
+    }
+
+    computeBenefitTotals(lines) {
+        const devicesBuy = Math.round(lines.reduce((sum, line) => sum + line.buyTotal, 0) * 1000) / 1000;
+        const devicesSell = Math.round(lines.reduce((sum, line) => sum + line.sellTotal, 0) * 1000) / 1000;
+        const meta = this.mapData.quotation || {};
+        const defaults = this.getQuotationServiceDefaults();
+        const programming = Math.max(
+            0,
+            Number(this.quotationProgrammingInput?.value
+                ?? meta.programming_price
+                ?? defaults.programming_price) || 0,
+        );
+        const installation = Math.max(
+            0,
+            Number(this.quotationInstallationInput?.value
+                ?? meta.installation_price
+                ?? defaults.installation_price) || 0,
+        );
+        this.ensureBenefitsMeta();
+        const expenses = this.mapData.benefits.extra_expenses || [];
+        const expensesTotal = Math.round(
+            expenses.reduce((sum, e) => sum + Math.max(0, Number(e.price) || 0), 0) * 1000,
+        ) / 1000;
+        const totalBuy = Math.round((devicesBuy + expensesTotal) * 1000) / 1000;
+        const totalSell = Math.round((devicesSell + programming + installation) * 1000) / 1000;
+        const totalBenefit = Math.round((totalSell - totalBuy) * 1000) / 1000;
+
+        return {
+            devicesBuy,
+            devicesSell,
+            programming,
+            installation,
+            expensesTotal,
+            totalBuy,
+            totalSell,
+            totalBenefit,
+            itemCount: lines.reduce((sum, line) => sum + line.qty, 0),
+        };
+    }
+
+    renderBenefitsTotalsOnly() {
+        if (!this.benefitsStatsEl || !this.benefitsTotalsEl) return;
+        const lines = this.collectBenefitLines();
+        const totals = this.computeBenefitTotals(lines);
+        this.paintBenefitsStats(totals);
+        this.paintBenefitsTotals(totals);
+    }
+
+    paintBenefitsStats(totals) {
+        if (!this.benefitsStatsEl) return;
+        this.benefitsStatsEl.innerHTML = `
+            <div class="rounded-xl border border-surface-700 bg-surface-800/40 p-3">
+                <p class="text-[10px] uppercase tracking-wide text-surface-500 mb-1">Bought · الشراء</p>
+                <p class="text-lg font-semibold font-mono text-white">${formatOmr(totals.totalBuy)}</p>
+            </div>
+            <div class="rounded-xl border border-surface-700 bg-surface-800/40 p-3">
+                <p class="text-[10px] uppercase tracking-wide text-surface-500 mb-1">Sell · البيع</p>
+                <p class="text-lg font-semibold font-mono text-emerald-300">${formatOmr(totals.totalSell)}</p>
+            </div>
+            <div class="rounded-xl border border-brand-500/30 bg-brand-500/10 p-3">
+                <p class="text-[10px] uppercase tracking-wide text-brand-300/80 mb-1">Benefit · الربح</p>
+                <p class="text-lg font-semibold font-mono ${totals.totalBenefit >= 0 ? 'text-brand-300' : 'text-rose-300'}">${formatOmr(totals.totalBenefit)}</p>
+            </div>`;
+    }
+
+    paintBenefitsTotals(totals) {
+        if (!this.benefitsTotalsEl) return;
+        this.benefitsTotalsEl.innerHTML = `
+            <div class="flex justify-between text-sm text-surface-300">
+                <span>Devices buy</span>
+                <span class="font-mono">${formatOmr(totals.devicesBuy)}</span>
+            </div>
+            <div class="flex justify-between text-sm text-surface-300">
+                <span>Devices sell</span>
+                <span class="font-mono">${formatOmr(totals.devicesSell)}</span>
+            </div>
+            ${totals.programming > 0 ? `
+                <div class="flex justify-between text-sm text-surface-300">
+                    <span>سعر البرمجة / Programming</span>
+                    <span class="font-mono">${formatOmr(totals.programming)}</span>
+                </div>
+            ` : ''}
+            ${totals.installation > 0 ? `
+                <div class="flex justify-between text-sm text-surface-300">
+                    <span>سعر التركيب / Installation</span>
+                    <span class="font-mono">${formatOmr(totals.installation)}</span>
+                </div>
+            ` : ''}
+            ${totals.expensesTotal > 0 ? `
+                <div class="flex justify-between text-sm text-rose-300/90">
+                    <span>مصاريف إضافية</span>
+                    <span class="font-mono">− ${formatOmr(totals.expensesTotal)}</span>
+                </div>
+            ` : ''}
+            <div class="pt-2 mt-1 border-t border-surface-700 flex justify-between text-base font-semibold text-white">
+                <span>Benefit · الربح</span>
+                <span class="font-mono ${totals.totalBenefit >= 0 ? 'text-brand-300' : 'text-rose-300'}">${formatOmr(totals.totalBenefit)}</span>
+            </div>`;
+    }
+
+    renderBenefits() {
+        if (!this.benefitsLinesEl || !this.benefitsExpensesEl) return;
+        this.ensureBenefitsMeta();
+        const lines = this.collectBenefitLines();
+        const totals = this.computeBenefitTotals(lines);
+
+        if (!lines.length) {
+            this.benefitsLinesEl.innerHTML = `
+                <div class="p-6 text-center text-sm text-surface-400">
+                    No devices placed yet. Place smart components on the map to calculate benefits.
+                </div>`;
+        } else {
+            this.benefitsLinesEl.innerHTML = `
+                <table class="quotation-table w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] uppercase tracking-wide text-surface-500 border-b border-surface-700 bg-surface-800/60">
+                            <th class="px-3 py-2 font-medium">Item</th>
+                            <th class="px-3 py-2 font-medium text-center">Qty</th>
+                            <th class="px-3 py-2 font-medium text-right">Buy</th>
+                            <th class="px-3 py-2 font-medium text-right">Sell</th>
+                            <th class="px-3 py-2 font-medium text-right">Benefit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${lines.map((line) => `
+                            <tr class="border-b border-surface-800/80 text-sm text-surface-200">
+                                <td class="px-3 py-2.5">
+                                    <span class="inline-flex items-center gap-2">
+                                        <span aria-hidden="true">${line.icon}</span>
+                                        <span>${line.name}</span>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2.5 text-center">${line.qty}</td>
+                                <td class="px-3 py-2.5 text-right font-mono text-xs">${formatOmr(line.buyTotal)}</td>
+                                <td class="px-3 py-2.5 text-right font-mono text-xs">${formatOmr(line.sellTotal)}</td>
+                                <td class="px-3 py-2.5 text-right font-mono text-xs text-brand-300">${formatOmr(line.benefit)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>`;
+        }
+
+        const expenses = this.mapData.benefits.extra_expenses;
+        if (!expenses.length) {
+            this.benefitsExpensesEl.innerHTML = `
+                <p class="text-xs text-surface-500">No extra expenses yet. Click + Add.</p>`;
+        } else {
+            this.benefitsExpensesEl.innerHTML = expenses.map((expense, index) => `
+                <div class="flex flex-wrap gap-2 items-center" data-expense-index="${index}">
+                    <input type="text" data-field="name" value="${this.escapeHtml(expense.name || '')}" placeholder="اسم المصروف"
+                        class="flex-1 min-w-[140px] rounded-lg border-surface-700 bg-surface-800 text-sm text-white">
+                    <input type="number" data-field="price" min="0" step="0.001" value="${Number(expense.price) || 0}"
+                        class="w-32 rounded-lg border-surface-700 bg-surface-800 text-sm text-white font-mono">
+                    <button type="button" data-expense-remove="${index}" class="text-xs text-rose-400 hover:text-rose-300 px-2">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        this.paintBenefitsStats(totals);
+        this.paintBenefitsTotals(totals);
     }
 
     persistQuotationMeta() {

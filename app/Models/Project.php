@@ -62,6 +62,21 @@ class Project extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function haComponentMappings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(HaComponentMapping::class);
+    }
+
+    public function haProjectAutomations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(HaProjectAutomation::class);
+    }
+
+    public function haProjectKnowledge(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(HaProjectKnowledge::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

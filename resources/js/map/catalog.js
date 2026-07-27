@@ -145,6 +145,7 @@ export function applySmartCatalogFromServer(items) {
             label: item.name || item.key,
             icon: item.icon || '●',
             price: Number(item.price) || 0,
+            buy_price: Number(item.buy_price) || 0,
             category: 'all',
             haDomain: 'sensor',
             model: item.model || item.name || item.key,

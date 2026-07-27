@@ -50,4 +50,14 @@ return [
         'thinking_budget' => (int) env('GEMINI_THINKING_BUDGET', 0),
     ],
 
+    'ha_ai' => [
+        'password' => env('HA_AI_PASSWORD'),
+    ],
+
+    'home_assistant' => [
+        'url' => rtrim((string) env('HOME_ASSISTANT_URL', ''), '/'),
+        'token' => env('HOME_ASSISTANT_TOKEN'),
+        'timeout' => (int) env('HOME_ASSISTANT_TIMEOUT', 60),
+    ],
+
 ];
