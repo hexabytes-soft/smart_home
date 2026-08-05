@@ -2,8 +2,16 @@
 
 .studio-shell {
     @apply grid bg-[#0b0f17] text-surface-100 overflow-hidden;
-    grid-template-rows: 44px 1fr 32px;
+    grid-template-rows: auto 44px 1fr 28px;
     height: calc(100vh - 3.25rem);
+}
+
+.studio-status-banner {
+    @apply flex flex-col gap-0.5 px-3 py-1.5 border-b border-white/[0.06] bg-[#0a0e16] shrink-0 z-20 min-w-0;
+}
+
+.studio-status-flash {
+    @apply m-0 text-[11px] font-medium text-emerald-300;
 }
 
 @media (min-width: 1024px) {
@@ -141,15 +149,19 @@
 }
 
 .studio-statusbar {
-    @apply flex items-center gap-3 px-3 text-[11px] text-surface-400 border-t border-white/[0.06] bg-[#0e131c]/95 shrink-0 z-20;
+    @apply flex items-center justify-end gap-3 px-3 text-[11px] text-surface-400 border-t border-white/[0.06] bg-[#0e131c]/95 shrink-0 z-20;
 }
 
 .studio-status-hint {
-    @apply flex-1 min-w-0 truncate text-surface-300;
+    @apply m-0 min-w-0 truncate text-[11px] text-surface-300;
 }
 
 .studio-status-context {
-    @apply hidden md:inline text-surface-500 shrink-0;
+    @apply m-0 hidden md:block text-[10px] text-surface-500 truncate;
+}
+
+.studio-status-context:empty {
+    @apply hidden;
 }
 
 .studio-status-actions {

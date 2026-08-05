@@ -30,11 +30,14 @@
         data-smart-catalog='@json($smartCatalog ?? [])'
         data-initial-view-mode="plan2d"
     >
-        @if (session('status'))
-            <div class="fixed top-16 right-4 z-50 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs">
-                {{ session('status') }}
-            </div>
-        @endif
+        {{-- Status row (above toolbar — never shares a line with Save / icons) --}}
+        <div class="studio-status-banner">
+            @if (session('status'))
+                <p class="studio-status-flash" role="status">{{ session('status') }}</p>
+            @endif
+            <p id="map-status" class="studio-status-hint" role="status">Ready — pick a room kit or draw walls to begin</p>
+            <p id="studio-context" class="studio-status-context"></p>
+        </div>
 
         {{-- Studio command bar --}}
         <header class="studio-topbar">
@@ -165,8 +168,6 @@
         </div>
 
         <footer class="studio-statusbar">
-            <span id="map-status" class="studio-status-hint">Ready — pick a room kit or draw walls to begin</span>
-            <span id="studio-context" class="studio-status-context"></span>
             <div class="studio-status-actions">
                 <span class="hidden lg:inline">R rotate · Ctrl+D dup</span>
             </div>
