@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->enum('type', ['home', 'building', 'apartment', 'office'])->default('home');
-            $table->enum('status', ['draft', 'published', 'archived'])->default('draft');
+            $table->string('status', 32)->default('draft');
             $table->enum('map_mode', ['2d', '3d', '360'])->default('3d');
             $table->unsignedInteger('width')->default(20)->comment('Map width in meters');
             $table->unsignedInteger('depth')->default(15)->comment('Map depth in meters');

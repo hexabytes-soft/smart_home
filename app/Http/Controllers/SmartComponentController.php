@@ -117,6 +117,7 @@ class SmartComponentController extends Controller
             'icon' => ['nullable', 'string', 'max:64'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999'],
             'buy_price' => ['required', 'numeric', 'min:0', 'max:999999'],
+            'unit' => ['required', 'in:piece,meter'],
             'mount' => ['required', 'in:ceiling,wall,floor,door'],
             'model' => ['nullable', 'string', 'max:120'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],

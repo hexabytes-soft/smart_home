@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\ProjectStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -60,6 +62,31 @@ class Project extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function isTrashedStatus(): bool
+    {
+        return ProjectStatus::isTrash((string) $this->status);
+    }
+
+    public function statusLabel(): string
+    {
+        return ProjectStatus::label((string) $this->status);
+    }
+
+    public function statusBadgeClasses(): string
+    {
+        return ProjectStatus::badgeClasses((string) $this->status);
+    }
+
+    public function scopeNotTrashed(Builder $query): Builder
+    {
+        return $query->where('status', '!=', ProjectStatus::TRASH);
+    }
+
+    public function scopeOnlyTrashedStatus(Builder $query): Builder
+    {
+        return $query->where('status', ProjectStatus::TRASH);
     }
 
     public function haComponentMappings(): \Illuminate\Database\Eloquent\Relations\HasMany

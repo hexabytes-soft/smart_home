@@ -26,7 +26,7 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
     <div>
         <x-input-label for="buy_price" value="Buy price (OMR)" />
         <x-text-input
@@ -54,6 +54,16 @@
             required
         />
         <x-input-error :messages="$errors->get('price')" class="mt-2" />
+    </div>
+    <div>
+        <x-input-label for="unit" value="Unit / الوحدة" />
+        <select id="unit" name="unit" class="input-dark block mt-1.5 w-full">
+            @foreach (\App\Support\ComponentUnit::labels() as $value => $label)
+                <option value="{{ $value }}" @selected(old('unit', $smartComponent?->unit ?? 'piece') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+        <p class="mt-1 text-[11px] text-surface-500">Meter = price for 1 m; map asks for length when placing.</p>
+        <x-input-error :messages="$errors->get('unit')" class="mt-2" />
     </div>
 </div>
 

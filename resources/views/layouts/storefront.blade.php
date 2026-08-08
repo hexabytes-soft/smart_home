@@ -18,9 +18,14 @@
         <div class="storefront-content">
             <header class="sf-nav">
                 <div class="sf-nav-inner">
-                    <a href="{{ route('shop.index') }}" class="sf-brand">
-                        <x-application-logo class="w-8 h-8" />
-                        <span>Smart Home</span>
+                    <a href="{{ route('shop.index') }}" class="sf-brand" aria-label="afaq.smart">
+                        <img
+                            src="{{ asset('images/afaq-smart-logo.png') }}"
+                            alt="afaq.smart"
+                            class="sf-brand-logo"
+                            width="148"
+                            height="148"
+                        >
                     </a>
 
                     <nav class="sf-nav-links" aria-label="Store">
@@ -41,8 +46,17 @@
             @yield('content')
 
             <footer class="sf-footer">
-                <p class="sf-display">Smart Home</p>
-                <p>&copy; {{ date('Y') }} · Designed for living spaces</p>
+                <img
+                    src="{{ asset('images/afaq-smart-logo.png') }}"
+                    alt="afaq.smart"
+                    class="sf-footer-logo"
+                    width="120"
+                    height="120"
+                >
+                <p>&copy; {{ date('Y') }} · بيوت ذكية .. حياة أسهل</p>
+                <p class="mt-2">
+                    <a href="{{ route('terms') }}" class="sf-nav-link inline-block">Terms &amp; Conditions · الشروط والأحكام</a>
+                </p>
             </footer>
         </div>
     </div>

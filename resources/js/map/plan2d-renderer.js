@@ -35,6 +35,7 @@ export class Plan2DRenderer {
         this.panY = 0;
         this.padding = 48;
         this.isPanning = false;
+        this.panMoved = false;
         this.lastPan = { x: 0, y: 0 };
         this.bounds = { w: 20, d: 15 };
         this.visible = false;
@@ -215,11 +216,22 @@ export class Plan2DRenderer {
 
     onWheel(event) {
         event.preventDefault();
+        const dx = event.deltaX || 0;
+        const dy = event.deltaY || 0;
+        // Trackpad / Shift+wheel: pan so zoomed plans can scroll in all directions.
+        const wantsPan = event.shiftKey || Math.abs(dx) > Math.abs(dy);
+        if (wantsPan && (dx !== 0 || dy !== 0)) {
+            const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 40 : 1;
+            this.panX -= dx * scale;
+            this.panY -= dy * scale;
+            return 'pan';
+        }
         const rect = this.canvas.getBoundingClientRect();
         const sx = event.clientX - rect.left;
         const sy = event.clientY - rect.top;
-        const factor = event.deltaY < 0 ? 1.08 : 0.92;
+        const factor = dy < 0 ? 1.08 : 0.92;
         this.zoomAt(sx, sy, factor);
+        return 'zoom';
     }
 
     pointerCount() {
@@ -239,6 +251,7 @@ export class Plan2DRenderer {
         this._pointers.clear();
         this._pinch = null;
         this.isPanning = false;
+        this.panMoved = false;
     }
 
     pinchDistance() {
@@ -257,7 +270,7 @@ export class Plan2DRenderer {
 
     /**
      * Start pan or pinch. Returns true if the gesture consumed the event.
-     * @param {{ allowFingerPan?: boolean }} opts
+     * @param {{ allowFingerPan?: boolean, forcePan?: boolean }} opts
      */
     onPointerDown(event, opts = {}) {
         this.updatePointer(event);
@@ -276,8 +289,10 @@ export class Plan2DRenderer {
         }
 
         const allowFingerPan = opts.allowFingerPan === true;
+        const forcePan = opts.forcePan === true;
         const isTouchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
-        const canPan = event.button === 1
+        const canPan = forcePan
+            || event.button === 1
             || event.button === 2
             || event.altKey
             || (event.button === 0 && event.shiftKey)
@@ -285,6 +300,7 @@ export class Plan2DRenderer {
 
         if (canPan) {
             this.isPanning = true;
+            this.panMoved = false;
             this.lastPan = { x: event.clientX, y: event.clientY };
             try { this.canvas.setPointerCapture(event.pointerId); } catch { /* ignore */ }
             return true;
@@ -327,17 +343,24 @@ export class Plan2DRenderer {
         }
 
         if (!this.isPanning) return false;
-        this.panX += event.clientX - this.lastPan.x;
-        this.panY += event.clientY - this.lastPan.y;
-        this.lastPan = { x: event.clientX, y: event.clientY };
+        const dx = event.clientX - this.lastPan.x;
+        const dy = event.clientY - this.lastPan.y;
+        if (dx !== 0 || dy !== 0) {
+            this.panX += dx;
+            this.panY += dy;
+            if (Math.hypot(dx, dy) > 2) this.panMoved = true;
+            this.lastPan = { x: event.clientX, y: event.clientY };
+        }
         return true;
     }
 
     onPointerUp(event) {
+        const didPan = this.isPanning && this.panMoved;
         if (event) this.removePointer(event);
         else this.clearPointers();
         if (this._pointers.size === 0) this.isPanning = false;
         if (this._pointers.size < 2) this._pinch = null;
+        return didPan;
     }
 
     hitTest(floor, sx, sy) {
@@ -757,7 +780,7 @@ export class Plan2DRenderer {
         ctx.textAlign = 'left';
         ctx.fillText(floorLabel || 'Floor plan', 12, h - 12);
         ctx.textAlign = 'right';
-        ctx.fillText(`${projectWidth}×${projectDepth} m · pinch / buttons zoom · drag pan`, w - 12, h - 12);
+        ctx.fillText(`${projectWidth}×${projectDepth} m · drag pan · wheel zoom · Shift+wheel scroll`, w - 12, h - 12);
     }
 
     drawGrid(ctx, pw, pd) {

@@ -10,9 +10,11 @@ use App\Models\Project;
 use App\Models\SmartComponent;
 use App\Services\FloorPlan\FloorPlanImportService;
 use App\Services\ProjectBenefitCalculator;
+use App\Support\ProjectStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use RuntimeException;
 use Throwable;
@@ -24,15 +26,36 @@ class ProjectController extends Controller
         $this->authorize('viewAny', Project::class);
 
         $user = $request->user();
+        $statusFilter = (string) $request->query('status', 'active');
+        $allowedFilters = ['active', ...ProjectStatus::all()];
+        if (! in_array($statusFilter, $allowedFilters, true)) {
+            $statusFilter = 'active';
+        }
 
-        $projects = Project::query()
+        $baseQuery = Project::query()
             ->with('owner')
             ->when(
                 ! $user->hasAnyRole(['admin', 'manager']),
                 fn ($query) => $query->where('user_id', $user->id)
+            );
+
+        $statusCounts = [
+            'active' => (clone $baseQuery)->notTrashed()->count(),
+            ProjectStatus::TRASH => (clone $baseQuery)->onlyTrashedStatus()->count(),
+        ];
+        foreach (ProjectStatus::active() as $status) {
+            $statusCounts[$status] = (clone $baseQuery)->where('status', $status)->count();
+        }
+
+        $projects = (clone $baseQuery)
+            ->when(
+                $statusFilter === 'active',
+                fn ($query) => $query->notTrashed(),
+                fn ($query) => $query->where('status', $statusFilter)
             )
             ->latest()
-            ->paginate(12);
+            ->paginate(12)
+            ->withQueryString();
 
         $catalog = SmartComponent::query()->get()->keyBy('key');
         $projectBenefits = [];
@@ -40,7 +63,12 @@ class ProjectController extends Controller
             $projectBenefits[$project->id] = $benefits->calculate($project, $catalog);
         }
 
-        return view('projects.index', compact('projects', 'projectBenefits'));
+        return view('projects.index', [
+            'projects' => $projects,
+            'projectBenefits' => $projectBenefits,
+            'statusFilter' => $statusFilter,
+            'statusCounts' => $statusCounts,
+        ]);
     }
 
     public function create(): View
@@ -111,15 +139,60 @@ class ProjectController extends Controller
             ->with('status', 'Project updated.');
     }
 
+    public function updateStatus(Request $request, Project $project): RedirectResponse
+    {
+        $this->authorize('update', $project);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(ProjectStatus::active())],
+        ]);
+
+        $project->update(['status' => $validated['status']]);
+
+        return back()->with('status', 'Status updated to '.$project->statusLabel().'.');
+    }
+
     public function destroy(Project $project): RedirectResponse
     {
         $this->authorize('delete', $project);
 
+        $project->update(['status' => ProjectStatus::TRASH]);
+
+        return redirect()
+            ->route('projects.index', ['status' => 'active'])
+            ->with('status', 'Project moved to trash.');
+    }
+
+    public function restore(Project $project): RedirectResponse
+    {
+        $this->authorize('update', $project);
+
+        if (! $project->isTrashedStatus()) {
+            return back()->with('status', 'Project is not in trash.');
+        }
+
+        $project->update(['status' => ProjectStatus::DRAFT]);
+
+        return redirect()
+            ->route('projects.index', ['status' => 'trash'])
+            ->with('status', 'Project restored as Draft.');
+    }
+
+    public function forceDestroy(Project $project): RedirectResponse
+    {
+        $this->authorize('delete', $project);
+
+        if (! $project->isTrashedStatus()) {
+            return redirect()
+                ->route('projects.index', ['status' => 'trash'])
+                ->with('status', 'Move the project to trash before permanently deleting it.');
+        }
+
         $project->delete();
 
         return redirect()
-            ->route('projects.index')
-            ->with('status', 'Project deleted.');
+            ->route('projects.index', ['status' => 'trash'])
+            ->with('status', 'Project permanently deleted.');
     }
 
     public function map(Project $project): View

@@ -4,23 +4,7 @@
 @section('meta_description', 'Explore the Smart Home product collection — curated pieces for modern living.')
 
 @section('content')
-    <section class="sf-hero" aria-label="Smart Home store">
-        <div class="sf-hero-media" aria-hidden="true"></div>
-
-        <div class="sf-hero-inner">
-            <p class="sf-hero-kicker">Product store</p>
-            <h1 class="sf-hero-brand">Smart Home</h1>
-            <p class="sf-hero-line">Smart devices for modern spaces — clear sell prices in Omani Rial.</p>
-            <div class="sf-hero-actions">
-                <a href="#collection" class="sf-btn sf-btn-primary">Shop collection</a>
-                @auth
-                    <a href="{{ route('products.index') }}" class="sf-btn sf-btn-ghost">Manage products</a>
-                @endauth
-            </div>
-        </div>
-    </section>
-
-    <section id="collection" class="sf-section">
+    <section id="collection" class="sf-section sf-section--store">
         <div class="sf-section-head">
             <div>
                 <h2 class="sf-section-title">Collection</h2>
@@ -33,10 +17,15 @@
                 </p>
             </div>
 
-            <form method="GET" action="{{ route('shop.index') }}" class="sf-search" role="search">
-                <input type="search" name="q" value="{{ $query }}" placeholder="Search…" aria-label="Search products">
-                <button type="submit">Go</button>
-            </form>
+            <div class="sf-section-tools">
+                <form method="GET" action="{{ route('shop.index') }}" class="sf-search" role="search">
+                    <input type="search" name="q" value="{{ $query }}" placeholder="Search…" aria-label="Search products">
+                    <button type="submit">Go</button>
+                </form>
+                @auth
+                    <a href="{{ route('products.index') }}" class="sf-btn sf-btn-soft sf-btn-sm">Manage products</a>
+                @endauth
+            </div>
         </div>
 
         @if ($products->count())

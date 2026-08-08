@@ -21,7 +21,7 @@ class UpdateProductRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'buy_price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'sell_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'images' => ['nullable', 'array'],
+            'images' => ['nullable', 'array', 'max:30'],
             'images.*' => ['image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'],
             'remove_images' => ['nullable', 'array'],
             'remove_images.*' => ['string', 'max:255'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\ProjectStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,7 +27,7 @@ class UpdateProjectRequest extends FormRequest
             'client_phone' => ['nullable', 'string', 'max:40'],
             'project_location' => ['nullable', 'string', 'max:255'],
             'type' => ['required', Rule::in(['home', 'building', 'apartment', 'office'])],
-            'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
+            'status' => ['required', Rule::in(ProjectStatus::active())],
             'map_mode' => ['required', Rule::in(['2d', '3d', '360'])],
             'width' => ['required', 'integer', 'min:5', 'max:200'],
             'depth' => ['required', 'integer', 'min:5', 'max:200'],

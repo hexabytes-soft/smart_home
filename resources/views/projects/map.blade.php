@@ -29,6 +29,7 @@
         data-project-location="{{ $project->project_location }}"
         data-smart-catalog='@json($smartCatalog ?? [])'
         data-initial-view-mode="plan2d"
+        data-terms-url="{{ route('terms') }}"
     >
         {{-- Status row (above toolbar — never shares a line with Save / icons) --}}
         <div class="studio-status-banner">
@@ -148,7 +149,15 @@
                             <div class="studio-asset-layout">
                                 <div class="studio-asset-content studio-scroll">
                                     <div data-catalog-panel="smart" class="space-y-2">
+                                        <input
+                                            type="search"
+                                            id="device-catalog-search"
+                                            class="studio-outliner-search !mb-0"
+                                            placeholder="Search devices — camera, switch…"
+                                            autocomplete="off"
+                                        >
                                         <div id="ha-device-grid" class="device-grid"></div>
+                                        <p id="device-catalog-empty" class="hidden text-[11px] text-surface-500 px-1 py-2">No devices match your search.</p>
                                     </div>
                                 </div>
                             </div>
@@ -244,25 +253,16 @@
                             <label for="quotation-phone" class="block text-[10px] font-medium text-surface-400 mb-1">رقم الهاتف / Client phone</label>
                             <input id="quotation-phone" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="+968 …" value="{{ $project->client_phone }}">
                         </div>
-                        <div>
+                        <div class="sm:col-span-2">
                             <label for="quotation-location" class="block text-[10px] font-medium text-surface-400 mb-1">مكان المشروع / Project location</label>
                             <input id="quotation-location" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="Location" value="{{ $project->project_location }}">
-                        </div>
-                        <div>
-                            <label for="quotation-notes" class="block text-[10px] font-medium text-surface-400 mb-1">Notes</label>
-                            <input id="quotation-notes" type="text" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white" placeholder="Optional notes">
                         </div>
                     </div>
 
                     <div id="quotation-lines" class="rounded-xl border border-surface-700 overflow-hidden"></div>
 
                     <div class="rounded-xl border border-surface-700 bg-surface-800/30 p-3 space-y-3">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <p class="text-[11px] font-semibold text-surface-200">خدمات إضافية / Extra services</p>
-                            <button type="button" id="quotation-save-defaults-btn" class="btn-secondary text-[10px] py-1 px-2.5">
-                                Save for all quotations
-                            </button>
-                        </div>
+                        <p class="text-[11px] font-semibold text-surface-200">خدمات وضريبة / Services &amp; tax</p>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="quotation-programming" class="block text-[10px] font-medium text-surface-400 mb-1">سعر البرمجة / Programming</label>
@@ -272,25 +272,69 @@
                                 <label for="quotation-installation" class="block text-[10px] font-medium text-surface-400 mb-1">سعر التركيب / Installation</label>
                                 <input id="quotation-installation" type="number" min="0" step="0.001" value="0" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white font-mono">
                             </div>
-                        </div>
-                        <p class="text-[10px] text-surface-500">Saved with this project automatically. Use “Save for all quotations” to reuse these amounts on other projects.</p>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div>
-                            <label for="quotation-discount" class="block text-[10px] font-medium text-surface-400 mb-1">Discount %</label>
-                            <input id="quotation-discount" type="number" min="0" max="100" step="0.1" value="0" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white">
-                        </div>
-                        <div>
-                            <label for="quotation-tva" class="block text-[10px] font-medium text-surface-400 mb-1">TVA / VAT %</label>
-                            <input id="quotation-tva" type="number" min="0" max="100" step="0.1" value="5" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white">
-                        </div>
-                        <div class="col-span-2 flex items-end">
-                            <p class="text-[10px] text-surface-500">Default VAT in Oman is often 5%. Set to 0 if not applicable.</p>
+                            <div>
+                                <label for="quotation-discount" class="block text-[10px] font-medium text-surface-400 mb-1">Discount %</label>
+                                <input id="quotation-discount" type="number" min="0" max="100" step="0.1" value="0" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white">
+                            </div>
+                            <div>
+                                <label for="quotation-tva" class="block text-[10px] font-medium text-surface-400 mb-1">الضريبة / TVA %</label>
+                                <input id="quotation-tva" type="number" min="0" max="100" step="0.1" value="0" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white">
+                            </div>
                         </div>
                     </div>
 
                     <div id="quotation-totals" class="rounded-xl border border-surface-700 bg-surface-800/40 p-4 space-y-2"></div>
+
+                    <div class="rounded-xl border border-surface-700 bg-surface-800/30 p-3 space-y-3">
+                        <label for="quotation-notes" class="block text-[10px] font-medium text-surface-300">
+                            الشروط والأحكام / Notes · Terms &amp; Conditions
+                        </label>
+                        <textarea
+                            id="quotation-notes"
+                            rows="6"
+                            class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white resize-y min-h-[7rem]"
+                            placeholder="اكتب الشروط والأحكام هنا… / Type terms &amp; conditions here…"
+                        ></textarea>
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <p class="text-[10px] text-surface-500 leading-relaxed max-w-md">
+                                Save stores:
+                                <span class="text-surface-300">البرمجة · التركيب · الضريبة · الشروط والأحكام</span>
+                                for the next quotations.
+                                <a href="{{ route('terms') }}" target="_blank" rel="noopener" class="text-brand-300 hover:text-brand-200 underline underline-offset-2">Terms page</a>
+                            </p>
+                            <button type="button" id="quotation-save-defaults-btn" class="btn-primary text-[11px] py-2 px-3 shrink-0">
+                                Save for next quotations
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="device-qty-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div class="w-full max-w-sm rounded-2xl border border-surface-700 bg-surface-900 shadow-2xl">
+                <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-surface-800">
+                    <div>
+                        <h3 id="device-qty-title" class="text-sm font-semibold text-white">Length</h3>
+                        <p id="device-qty-meta" class="text-[11px] text-surface-500 mt-0.5">Enter meters needed</p>
+                    </div>
+                    <button type="button" data-qty-close class="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition-colors" aria-label="Close">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div>
+                        <label for="device-qty-input" class="block text-[10px] font-medium text-surface-400 mb-1">كم متر تحتاج؟ / How many meters?</label>
+                        <input id="device-qty-input" type="number" min="0.001" step="0.001" value="1" class="w-full rounded-lg border-surface-700 bg-surface-800 text-sm text-white font-mono">
+                    </div>
+                    <div class="flex items-center justify-between rounded-xl border border-surface-700 bg-surface-800/40 px-3 py-2.5">
+                        <span class="text-[11px] text-surface-400">Total · الإجمالي</span>
+                        <span id="device-qty-total" class="text-sm font-mono font-semibold text-brand-300">0.000 OMR</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" data-qty-close class="btn-secondary flex-1 text-xs py-2.5">Cancel</button>
+                        <button type="button" id="device-qty-confirm" class="btn-primary flex-1 text-xs py-2.5">Place</button>
+                    </div>
                 </div>
             </div>
         </div>

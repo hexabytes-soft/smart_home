@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -22,6 +23,7 @@ Route::prefix('view')->name('share.')->group(function () {
 
 Route::get('/shop', [StorefrontController::class, 'index'])->name('shop.index');
 Route::get('/shop/{product}', [StorefrontController::class, 'show'])->name('shop.show');
+Route::get('/terms', [LegalController::class, 'terms'])->name('terms');
 
 Route::get('/', function () {
     return auth()->check()
@@ -38,13 +40,15 @@ Route::get('/dashboard', function () {
         $projectsQuery->where('user_id', $user->id);
     }
 
+    $activeQuery = (clone $projectsQuery)->where('status', '!=', 'trash');
+
     $stats = [
-        'projects' => (clone $projectsQuery)->count(),
-        'published' => (clone $projectsQuery)->where('status', 'published')->count(),
-        'drafts' => (clone $projectsQuery)->where('status', 'draft')->count(),
+        'projects' => (clone $activeQuery)->count(),
+        'published' => (clone $activeQuery)->whereIn('status', ['in_progress', 'agreed', 'completed'])->count(),
+        'drafts' => (clone $activeQuery)->where('status', 'draft')->count(),
     ];
 
-    $recentProjects = $projectsQuery->take(6)->get();
+    $recentProjects = (clone $activeQuery)->take(6)->get();
 
     return view('dashboard', compact('stats', 'recentProjects'));
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -59,6 +63,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('smart-components', SmartComponentController::class)->except(['show']);
     Route::patch('smart-components/{smart_component}/price', [SmartComponentController::class, 'updatePrice'])
         ->name('smart-components.updatePrice');
+    Route::patch('projects/{project}/status', [ProjectController::class, 'updateStatus'])->name('projects.status');
+    Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
+    Route::delete('projects/{project}/force', [ProjectController::class, 'forceDestroy'])->name('projects.forceDestroy');
     Route::get('projects/{project}/map', [ProjectController::class, 'map'])->name('projects.map');
     Route::put('projects/{project}/map', [ProjectController::class, 'updateMap'])->name('projects.map.update');
     Route::put('projects/{project}/benefits', [ProjectController::class, 'updateBenefits'])->name('projects.benefits.update');

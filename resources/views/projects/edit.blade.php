@@ -95,8 +95,10 @@
                         <div>
                             <x-input-label for="status" value="Status" />
                             <select id="status" name="status" class="input-dark block mt-1.5 w-full">
-                                @foreach (['draft', 'published', 'archived'] as $status)
-                                    <option value="{{ $status }}" @selected(old('status', $project->status) === $status)>{{ ucfirst($status) }}</option>
+                                @foreach (\App\Support\ProjectStatus::active() as $status)
+                                    <option value="{{ $status }}" @selected(old('status', $project->isTrashedStatus() ? \App\Support\ProjectStatus::DRAFT : $project->status) === $status)>
+                                        {{ \App\Support\ProjectStatus::label($status) }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -133,17 +135,31 @@
             </form>
 
             @can('delete', $project)
-                <form method="POST" action="{{ route('projects.destroy', $project) }}" class="card p-5 border-rose-500/20" onsubmit="return confirm('Delete this project permanently?')">
-                    @csrf
-                    @method('DELETE')
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <p class="text-sm font-semibold text-rose-300">Danger zone</p>
-                            <p class="text-xs text-surface-500 mt-0.5">This permanently deletes the project and its map data.</p>
+                @if ($project->isTrashedStatus())
+                    <form method="POST" action="{{ route('projects.forceDestroy', $project) }}" class="card p-5 border-rose-500/20" onsubmit="return confirm('Delete this project permanently from the system? This cannot be undone.')">
+                        @csrf
+                        @method('DELETE')
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-rose-300">Delete forever</p>
+                                <p class="text-xs text-surface-500 mt-0.5">Permanently removes the project and its map data from the system.</p>
+                            </div>
+                            <x-danger-button>Delete forever</x-danger-button>
                         </div>
-                        <x-danger-button>Delete project</x-danger-button>
-                    </div>
-                </form>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('projects.destroy', $project) }}" class="card p-5 border-rose-500/20" onsubmit="return confirm('Move this project to trash?')">
+                        @csrf
+                        @method('DELETE')
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-rose-300">Move to trash</p>
+                                <p class="text-xs text-surface-500 mt-0.5">Hidden from the main list. You can restore it later, or delete forever from Trash.</p>
+                            </div>
+                            <x-danger-button>Move to trash</x-danger-button>
+                        </div>
+                    </form>
+                @endif
             @endcan
         </div>
     </div>

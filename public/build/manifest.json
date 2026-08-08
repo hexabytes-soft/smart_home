@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-DW1fMTO0.css",
+    "file": "assets/app-Cd95MGIj.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-BKSD1e7V.css",
+    "file": "assets/storefront-C0pKN0I1.css",
     "src": "resources/css/storefront.css",
     "isEntry": true
   },
@@ -21,7 +21,7 @@
     "isEntry": true
   },
   "resources/js/map-editor.js": {
-    "file": "assets/map-editor-CljZTpWy.js",
+    "file": "assets/map-editor-CSQWHRnx.js",
     "name": "map-editor",
     "src": "resources/js/map-editor.js",
     "isEntry": true

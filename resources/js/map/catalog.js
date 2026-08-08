@@ -127,6 +127,27 @@ export function deviceUnitPrice(type, device = null) {
     return Number(catalog?.price) || 0;
 }
 
+/** Product UoM: piece | meter */
+export function catalogUnit(type) {
+    return SMART_CATALOG[type]?.unit || 'piece';
+}
+
+export function isMeterUnit(unitOrType) {
+    const unit = SMART_CATALOG[unitOrType]?.unit || unitOrType;
+    return unit === 'meter';
+}
+
+export function unitShortLabel(unit) {
+    return unit === 'meter' ? 'm' : 'pc';
+}
+
+/** Quantity for quotation: meters or piece count (default 1). */
+export function deviceQuantity(device) {
+    const qty = Number(device?.qty);
+    if (Number.isFinite(qty) && qty > 0) return qty;
+    return 1;
+}
+
 /**
  * Replace the in-memory smart catalog with rows from the Smart Components admin.
  * Mutates SMART_CATALOG / SMART_CATALOG_ORDER so all map modules stay in sync.
@@ -146,6 +167,7 @@ export function applySmartCatalogFromServer(items) {
             icon: item.icon || '●',
             price: Number(item.price) || 0,
             buy_price: Number(item.buy_price) || 0,
+            unit: item.unit === 'meter' ? 'meter' : 'piece',
             category: 'all',
             haDomain: 'sensor',
             model: item.model || item.name || item.key,

@@ -36,6 +36,10 @@ import {
     formatOmrPlain,
     formatOmrPrint,
     deviceUnitPrice,
+    deviceQuantity,
+    catalogUnit,
+    isMeterUnit,
+    unitShortLabel,
     SMART_CATALOG_ORDER,
     applySmartCatalogFromServer,
 } from './map/catalog.js';
@@ -136,6 +140,9 @@ export class MapEditor {
         this.outlinerSearchEl = root.querySelector('#outliner-search');
         this.outlinerCountEl = root.querySelector('#outliner-count');
         this.outlinerFilter = '';
+        this.deviceSearchEl = root.querySelector('#device-catalog-search');
+        this.deviceCatalogEmptyEl = root.querySelector('#device-catalog-empty');
+        this.deviceFilter = '';
         this.propsEl = root.querySelector('#map-properties');
         this.listEl = root.querySelector('#map-elements-list');
         this.saveBtn = document.querySelector('#save-map-btn');
@@ -513,10 +520,39 @@ export class MapEditor {
         this.bindPlan2dEvents();
     }
 
+    isPlan2dMovableHit(hit, event) {
+        if (!hit) return false;
+        if (['component', 'smart', 'label', 'door', 'window'].includes(hit.type)) return true;
+        if (this.tool === 'select' && this.getHandleAt(event)) return true;
+        return false;
+    }
+
+    applyPlan2dClickSelection(hit) {
+        if (this.tool !== 'select' || !this.canEdit) return;
+        if (!hit) {
+            this.selectObject(null);
+        } else if (hit.type === 'door' || hit.type === 'window') {
+            this.selectById(hit.type, hit.id);
+        } else if (hit.type === 'component' || hit.type === 'smart') {
+            this.selectById(hit.type, hit.id);
+        } else if (hit.type === 'label') {
+            this.selectById('label', hit.id);
+        } else if (hit.type === 'room') {
+            this.selectById('room', hit.id);
+        } else if (hit.type === 'wall') {
+            this.selectById('wall', hit.id);
+        } else {
+            this.selectObject(null);
+        }
+        this.renderElementsList();
+        this.renderPlan2d();
+    }
+
     bindPlan2dEvents() {
         if (!this.plan2d) return;
         const canvas = this.plan2d.canvas;
         canvas.style.touchAction = 'none';
+        this._plan2dClickCandidate = null;
 
         canvas.addEventListener('wheel', (e) => {
             if (this.viewMode !== 'plan2d') return;
@@ -528,14 +564,27 @@ export class MapEditor {
             if (this.viewMode !== 'plan2d') return;
             // Closing first so any new tap (map empty space / other device) hides the popup.
             this.hideDeviceDetails();
-            const allowFingerPan = this.viewerOnly || this.tool === 'select' || !this.canEdit;
+            const { sx, sy } = this.getPlan2dScreen(e);
+            const hit = this.plan2d.hitTest(this.getFloor(), sx, sy);
+            const isMovable = this.isPlan2dMovableHit(hit, e);
+            const isTouchLike = e.pointerType === 'touch' || e.pointerType === 'pen';
+            const zoomedIn = this.plan2d.zoom > this.plan2d.minZoom() * 1.35;
+            const inSelectMode = this.viewerOnly || !this.canEdit || this.tool === 'select';
+            // Drag empty floor / rooms / walls to pan (esp. when zoomed) so the image can scroll L/R/U/D.
+            const forcePan = !isMovable && e.button === 0 && (inSelectMode || isTouchLike || zoomedIn);
+            const allowFingerPan = forcePan || inSelectMode || zoomedIn;
+
             if (this.plan2d.pointerCount() === 0) {
                 this.startSmartLongPress(e);
             }
-            if (this.plan2d.onPointerDown(e, { allowFingerPan })) {
+            if (this.plan2d.onPointerDown(e, { allowFingerPan, forcePan })) {
                 this.clearSmartLongPress();
+                this._plan2dClickCandidate = forcePan
+                    ? { hit, x: e.clientX, y: e.clientY, place: !inSelectMode }
+                    : null;
                 return;
             }
+            this._plan2dClickCandidate = null;
             this.onPointerDown(e);
         });
 
@@ -551,6 +600,7 @@ export class MapEditor {
             }
             const handled = this.plan2d.onPointerMove(e);
             if (handled || this.plan2d.isPanning || this.plan2d._pinch) {
+                if (this.plan2d.panMoved) this._plan2dClickCandidate = null;
                 this.clearSmartLongPress();
                 this.renderPlan2d();
                 return;
@@ -560,12 +610,22 @@ export class MapEditor {
 
         canvas.addEventListener('pointerup', (e) => {
             const fired = this.longPressFired;
+            const candidate = this._plan2dClickCandidate;
+            this._plan2dClickCandidate = null;
             this.clearSmartLongPress();
-            this.plan2d?.onPointerUp(e);
+            const didPan = this.plan2d?.onPointerUp(e);
+            if (!didPan && candidate) {
+                if (candidate.place) {
+                    this.onPointerDown(e);
+                } else if (this.tool === 'select') {
+                    this.applyPlan2dClickSelection(candidate.hit);
+                }
+            }
             if (!fired) this.hideDeviceDetails();
             this.renderPlan2d();
         });
         canvas.addEventListener('pointercancel', (e) => {
+            this._plan2dClickCandidate = null;
             this.clearSmartLongPress();
             this.plan2d?.onPointerUp(e);
             this.hideDeviceDetails();
@@ -952,8 +1012,25 @@ export class MapEditor {
         this.quotationNotesInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationProgrammingInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationInstallationInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationDiscountInput?.addEventListener('change', () => this.persistQuotationMeta());
+        this.quotationTvaInput?.addEventListener('change', () => this.persistQuotationMeta());
         this.quotationSaveDefaultsBtn?.addEventListener('click', () => this.saveQuotationServiceDefaults());
         this.quotationPrintBtn?.addEventListener('click', () => this.printQuotation());
+
+        document.querySelectorAll('[data-qty-close]').forEach((btn) => {
+            btn.addEventListener('click', () => this.closeQtyModal());
+        });
+        document.querySelector('#device-qty-confirm')?.addEventListener('click', () => this.confirmQtyModal());
+        document.querySelector('#device-qty-modal')?.addEventListener('click', (e) => {
+            if (e.target?.id === 'device-qty-modal') this.closeQtyModal();
+        });
+        document.querySelector('#device-qty-input')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.confirmQtyModal();
+            }
+            if (e.key === 'Escape') this.closeQtyModal();
+        });
 
         this.benefitsBtn?.addEventListener('click', () => this.openBenefitsModal());
         document.querySelectorAll('[data-benefits-close]').forEach((btn) => {
@@ -1110,6 +1187,11 @@ export class MapEditor {
             this.outlinerFilter = e.target.value.trim().toLowerCase();
             this.renderElementsList();
         });
+
+        this.deviceSearchEl?.addEventListener('input', (e) => {
+            this.deviceFilter = e.target.value.trim().toLowerCase();
+            this.renderSmartCatalog();
+        });
     }
 
     preserveScroll(el, fn) {
@@ -1192,19 +1274,41 @@ export class MapEditor {
         this.renderSmartCatalog();
     }
 
+    matchesDeviceFilter(key, spec, query) {
+        if (!query) return true;
+        const haystack = [
+            key,
+            spec.label,
+            spec.model,
+            spec.haDomain,
+            spec.mount,
+            spec.category,
+        ].filter(Boolean).join(' ').toLowerCase();
+        return query.split(/\s+/).every((part) => haystack.includes(part));
+    }
+
     renderSmartCatalog() {
         if (!this.haDeviceGridEl) return;
 
         this.preserveScroll(this.assetScrollEl, () => {
-        const devices = getDevicesByCategory('all');
+        const query = this.deviceFilter || '';
+        const devices = getDevicesByCategory('all')
+            .filter(([key, spec]) => this.matchesDeviceFilter(key, spec, query));
         this.haDeviceGridEl.className = 'device-grid';
-        this.haDeviceGridEl.innerHTML = devices.map(([key, spec]) => `
-            <button type="button" data-smart="${key}" title="${spec.label} · ${formatOmrPlain(spec.price)}" class="catalog-tile">
+        this.haDeviceGridEl.innerHTML = devices.map(([key, spec]) => {
+            const uom = spec.unit === 'meter' ? 'meter' : 'piece';
+            const priceSuffix = uom === 'meter' ? '/m' : '';
+            return `
+            <button type="button" data-smart="${key}" title="${spec.label} · ${formatOmrPlain(spec.price)}${priceSuffix}" class="catalog-tile">
                 <span class="catalog-tile-icon" aria-hidden="true">${spec.icon}</span>
-                <span class="catalog-tile-label">${spec.label}</span>
-                <span class="catalog-tile-price">${formatOmr(spec.price)}</span>
-            </button>
-        `).join('');
+                <span class="catalog-tile-label">${spec.label}${uom === 'meter' ? ' <span class="text-surface-500 font-normal">(m)</span>' : ''}</span>
+                <span class="catalog-tile-price">${formatOmr(spec.price)}${priceSuffix ? `<span class="text-surface-500">${priceSuffix}</span>` : ''}</span>
+            </button>`;
+        }).join('');
+
+        if (this.deviceCatalogEmptyEl) {
+            this.deviceCatalogEmptyEl.classList.toggle('hidden', devices.length > 0);
+        }
 
         this.smartButtons = this.haDeviceGridEl.querySelectorAll('[data-smart]');
         this.smartButtons.forEach((btn) => {
@@ -1279,7 +1383,7 @@ export class MapEditor {
         } else if (isPlan2d) {
             this.renderPlan2d();
             if (!this.viewerOnly) this.setTool(this.tool || 'select');
-            this.setStatus('2D plan — pinch / buttons zoom · drag pan · place devices');
+            this.setStatus('2D plan — drag to pan · wheel zoom · Shift+wheel / trackpad scroll · pinch zoom');
         }
     }
 
@@ -1773,7 +1877,7 @@ export class MapEditor {
 
         if (this.tool === 'smart' && this.placingSmart) {
             const pt = this.getWorldPoint(event);
-            if (pt) this.addSmartDevice(this.placingSmart, pt);
+            if (pt) this.beginPlaceSmartDevice(this.placingSmart, pt);
             return;
         }
 
@@ -2231,10 +2335,76 @@ export class MapEditor {
         this.selectById('component', component.id);
     }
 
-    addSmartDevice(type, position) {
+    beginPlaceSmartDevice(type, position) {
+        const spec = SMART_CATALOG[type];
+        if (!spec) return;
+        if (isMeterUnit(type)) {
+            this.openQtyModal({ type, position });
+            return;
+        }
+        this.addSmartDevice(type, position, 1);
+    }
+
+    openQtyModal({ type, position }) {
+        const spec = SMART_CATALOG[type] || {};
+        const modal = document.querySelector('#device-qty-modal');
+        const titleEl = document.querySelector('#device-qty-title');
+        const metaEl = document.querySelector('#device-qty-meta');
+        const input = document.querySelector('#device-qty-input');
+        const totalEl = document.querySelector('#device-qty-total');
+        if (!modal || !input) {
+            this.addSmartDevice(type, position, 1);
+            return;
+        }
+
+        this._pendingSmartPlace = { type, position };
+        const unitPrice = Number(spec.price) || 0;
+        if (titleEl) titleEl.textContent = `${spec.icon || '●'} ${spec.label || type}`;
+        if (metaEl) {
+            metaEl.textContent = `Price per 1 m: ${formatOmrPlain(unitPrice)} OMR · enter length in meters`;
+        }
+        input.value = '1';
+        input.min = '0.001';
+        input.step = '0.001';
+        const updateTotal = () => {
+            const qty = Math.max(0, Number(input.value) || 0);
+            if (totalEl) totalEl.textContent = `${formatOmrPlain(unitPrice * qty)} OMR`;
+        };
+        input.oninput = updateTotal;
+        updateTotal();
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 30);
+    }
+
+    closeQtyModal() {
+        document.querySelector('#device-qty-modal')?.classList.add('hidden');
+        this._pendingSmartPlace = null;
+        const input = document.querySelector('#device-qty-input');
+        if (input) input.oninput = null;
+    }
+
+    confirmQtyModal() {
+        const pending = this._pendingSmartPlace;
+        if (!pending) {
+            this.closeQtyModal();
+            return;
+        }
+        const input = document.querySelector('#device-qty-input');
+        const qty = Math.max(0.001, Number(input?.value) || 1);
+        const { type, position } = pending;
+        this.closeQtyModal();
+        this.addSmartDevice(type, position, qty);
+        this.setStatus(`Placed ${SMART_CATALOG[type]?.label || type} · ${qty} m`);
+    }
+
+    addSmartDevice(type, position, qty = 1) {
         const spec = SMART_CATALOG[type];
         if (!spec) return;
         const floor = this.getFloor();
+        const quantity = Math.max(0.001, Number(qty) || 1);
         const device = {
             id: uid('smart'),
             type,
@@ -2245,6 +2415,8 @@ export class MapEditor {
             height_offset: spec.defaultHeight ?? 1.35,
             on: true,
             price: Number(spec.price) || 0,
+            qty: quantity,
+            unit: catalogUnit(type),
         };
         floor.smart_devices.push(device);
         this.refreshScene();
@@ -2420,6 +2592,8 @@ export class MapEditor {
                     height_offset: item.height ?? spec.defaultHeight ?? 1.35,
                     on: true,
                     price: Number(spec.price) || 0,
+                    qty: 1,
+                    unit: catalogUnit(item.type),
                     kit_group: groupId,
                 });
             }
@@ -3333,15 +3507,20 @@ export class MapEditor {
             if (!device) return;
             const spec = SMART_CATALOG[device.type] || {};
             const unitPrice = deviceUnitPrice(device.type, device);
+            const uom = device.unit || catalogUnit(device.type);
+            const qty = deviceQuantity(device);
+            const lineTotal = Math.round(unitPrice * qty * 1000) / 1000;
+            const qtyLabel = isMeterUnit(uom) ? 'Length (m)' : 'Quantity';
             this.propsEl.innerHTML = this.propsWrap(`
                 ${this.propsHeader(spec.icon || '●', spec.label || device.type, spec.model || 'Smart device')}
                 ${this.statRow([
-                    ...(spec.haDomain ? [{ label: 'HA', value: spec.haDomain }] : []),
-                    { label: 'Price', value: formatOmr(unitPrice) },
+                    { label: 'Unit', value: unitShortLabel(uom) },
+                    { label: 'Line', value: formatOmr(lineTotal) },
                 ])}
                 ${this.toggleControl('on', 'Power', device.on !== false)}
                 ${this.propsSection('Price (OMR)')}
-                ${this.numControl('price', 'Unit price', unitPrice, { step: 0.1, min: 0, max: 99999 })}
+                ${this.numControl('price', isMeterUnit(uom) ? 'Price per 1 m' : 'Unit price', unitPrice, { step: 0.1, min: 0, max: 99999 })}
+                ${this.numControl('qty', qtyLabel, qty, { step: isMeterUnit(uom) ? 0.1 : 1, min: 0.001, max: 99999 })}
                 ${this.propsSection('Placement')}
                 ${this.numControl('position.x', 'Position X', device.position[0], { step: 0.1, min: -200, max: 200 })}
                 ${this.numControl('position.z', 'Position Z', device.position[1], { step: 0.1, min: -200, max: 200 })}
@@ -3657,26 +3836,54 @@ export class MapEditor {
             return {
                 programming_price: Math.max(0, Number(data.programming_price) || 0),
                 installation_price: Math.max(0, Number(data.installation_price) || 0),
+                tva_pct: Math.min(100, Math.max(0, Number(data.tva_pct) || 0)),
+                notes: typeof data.notes === 'string' ? data.notes : '',
             };
         } catch {
-            return { programming_price: 0, installation_price: 0 };
+            return { programming_price: 0, installation_price: 0, tva_pct: 0, notes: '' };
         }
+    }
+
+    /**
+     * Prefer project quotation value when present; otherwise saved “next quotation” defaults.
+     * Empty notes fall back to saved الشروط والأحكام defaults.
+     */
+    resolveQuotationDefault(meta, key, fallback = 0) {
+        const defaults = this.getQuotationServiceDefaults();
+        if (key === 'notes') {
+            const metaNotes = typeof meta.notes === 'string' ? meta.notes : '';
+            if (metaNotes.trim() !== '') return metaNotes;
+            return defaults.notes || '';
+        }
+        if (Object.prototype.hasOwnProperty.call(meta, key) && meta[key] !== null && meta[key] !== undefined) {
+            return meta[key];
+        }
+        if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+            return defaults[key];
+        }
+        return fallback;
     }
 
     saveQuotationServiceDefaults() {
         const programming = Math.max(0, Number(this.quotationProgrammingInput?.value) || 0);
         const installation = Math.max(0, Number(this.quotationInstallationInput?.value) || 0);
+        const tvaPct = Math.min(100, Math.max(0, Number(this.quotationTvaInput?.value) || 0));
+        const notes = this.quotationNotesInput?.value ?? '';
         localStorage.setItem(this.quotationDefaultsKey, JSON.stringify({
             programming_price: programming,
             installation_price: installation,
+            tva_pct: tvaPct,
+            notes,
         }));
         this.persistQuotationMeta();
-        this.setStatus('Programming & installation prices saved for all quotations');
+        this.setStatus('Saved for next quotations: برمجة · تركيب · ضريبة · الشروط والأحكام');
         if (this.quotationSaveDefaultsBtn) {
             const prev = this.quotationSaveDefaultsBtn.textContent;
             this.quotationSaveDefaultsBtn.textContent = 'Saved ✓';
             setTimeout(() => {
-                if (this.quotationSaveDefaultsBtn) this.quotationSaveDefaultsBtn.textContent = prev || 'Save for all quotations';
+                if (this.quotationSaveDefaultsBtn) {
+                    this.quotationSaveDefaultsBtn.textContent = prev || 'Save for next quotations';
+                }
             }, 1600);
         }
     }
@@ -3684,7 +3891,6 @@ export class MapEditor {
     openQuotationModal() {
         if (!this.quotationModal) return;
         const meta = this.mapData.quotation || {};
-        const defaults = this.getQuotationServiceDefaults();
         const projectClient = this.root.dataset.clientName || '';
         const projectPhone = this.root.dataset.clientPhone || '';
         const projectLocation = this.root.dataset.projectLocation || '';
@@ -3697,20 +3903,26 @@ export class MapEditor {
         if (this.quotationLocationInput) {
             this.quotationLocationInput.value = meta.location || projectLocation || '';
         }
-        if (this.quotationNotesInput) this.quotationNotesInput.value = meta.notes || '';
+        if (this.quotationNotesInput) {
+            this.quotationNotesInput.value = this.resolveQuotationDefault(meta, 'notes', '');
+        }
         if (this.quotationProgrammingInput) {
-            const value = meta.programming_price ?? defaults.programming_price ?? 0;
+            const value = this.resolveQuotationDefault(meta, 'programming_price', 0);
             this.quotationProgrammingInput.value = String(Number(value) || 0);
         }
         if (this.quotationInstallationInput) {
-            const value = meta.installation_price ?? defaults.installation_price ?? 0;
+            const value = this.resolveQuotationDefault(meta, 'installation_price', 0);
             this.quotationInstallationInput.value = String(Number(value) || 0);
         }
         if (this.quotationDiscountInput) {
             this.quotationDiscountInput.value = String(meta.discount_pct ?? 0);
         }
         if (this.quotationTvaInput) {
-            this.quotationTvaInput.value = String(meta.tva_pct ?? 5);
+            // Allow saved 0% tax; only fall back when project has no tva yet.
+            const tva = Object.prototype.hasOwnProperty.call(meta, 'tva_pct')
+                ? meta.tva_pct
+                : this.getQuotationServiceDefaults().tva_pct;
+            this.quotationTvaInput.value = String(Math.min(100, Math.max(0, Number(tva) || 0)));
         }
         this.renderQuotation();
         this.quotationModal.classList.remove('hidden');
@@ -3767,10 +3979,12 @@ export class MapEditor {
                     ? catalogSell
                     : deviceUnitPrice(type, device);
                 const buy = Math.max(0, Number(spec.buy_price) || 0);
+                const qty = deviceQuantity(device);
+                const unit = catalogUnit(type);
                 const key = `${type}::${buy.toFixed(3)}::${sell.toFixed(3)}`;
                 const existing = counts.get(key);
                 if (existing) {
-                    existing.qty += 1;
+                    existing.qty += qty;
                 } else {
                     counts.set(key, {
                         type,
@@ -3778,7 +3992,8 @@ export class MapEditor {
                         name: spec.label || type,
                         buy,
                         sell,
-                        qty: 1,
+                        qty,
+                        unit,
                     });
                 }
             }
@@ -3985,10 +4200,12 @@ export class MapEditor {
                 const unit = Number.isFinite(catalogPrice)
                     ? catalogPrice
                     : deviceUnitPrice(type, device);
+                const qty = deviceQuantity(device);
+                const uom = catalogUnit(type);
                 const key = `${type}::${unit.toFixed(3)}`;
                 const existing = counts.get(key);
                 if (existing) {
-                    existing.qty += 1;
+                    existing.qty += qty;
                 } else {
                     const spec = SMART_CATALOG[type] || {};
                     counts.set(key, {
@@ -3996,7 +4213,8 @@ export class MapEditor {
                         icon: spec.icon || '●',
                         name: spec.label || type,
                         unit,
-                        qty: 1,
+                        qty,
+                        uom,
                     });
                 }
             }
@@ -4079,8 +4297,8 @@ export class MapEditor {
                                         <span>${line.name}</span>
                                     </span>
                                 </td>
-                                <td class="px-3 py-2.5 text-center">${line.qty}</td>
-                                <td class="px-3 py-2.5 text-right font-mono text-xs">${formatOmr(line.unit)}</td>
+                                <td class="px-3 py-2.5 text-center">${Number(line.qty).toFixed(isMeterUnit(line.uom) ? 3 : 0)} ${unitShortLabel(line.uom || 'piece')}</td>
+                                <td class="px-3 py-2.5 text-right font-mono text-xs">${formatOmr(line.unit)}${isMeterUnit(line.uom) ? '<span class="text-surface-500">/m</span>' : ''}</td>
                                 <td class="px-3 py-2.5 text-right font-mono text-xs text-white">${formatOmr(line.total)}</td>
                             </tr>
                         `).join('')}
@@ -4154,6 +4372,7 @@ export class MapEditor {
         const logoUrl = `${window.location.origin}/images/afaq-smart-logo.png`;
         const omrInkUrl = `${window.location.origin}/images/omr-symbol-ink.png`;
         const omrNavyUrl = `${window.location.origin}/images/omr-symbol-navy.png`;
+        const termsUrl = this.escapeHtml(this.root.dataset.termsUrl || `${window.location.origin}/terms`);
         const companyAr = 'شركة الأفاق للبيوت الذكية';
         const companyEn = 'afaq.smart';
         const taglineAr = 'بيوت ذكية .. حياة أسهل';
@@ -4170,8 +4389,8 @@ export class MapEditor {
                             <span>${this.escapeHtml(line.name)}</span>
                         </div>
                     </td>
-                    <td class="center">${line.qty}</td>
-                    <td class="right mono">${money(line.unit)}</td>
+                    <td class="center">${Number(line.qty).toFixed(isMeterUnit(line.uom) ? 3 : 0)} ${unitShortLabel(line.uom || 'piece')}</td>
+                    <td class="right mono">${money(line.unit)}${isMeterUnit(line.uom) ? ' /m' : ''}</td>
                     <td class="right mono strong">${money(line.total)}</td>
                 </tr>`).join('')
             : '<tr><td colspan="5" class="empty">No devices on this map yet</td></tr>';
@@ -4339,7 +4558,7 @@ export class MapEditor {
   .empty { text-align: center; color: var(--muted); padding: 28px !important; }
   .bottom {
     display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: 1fr;
     gap: 18px;
     align-items: start;
   }
@@ -4360,8 +4579,12 @@ export class MapEditor {
     font-size: 13px;
     color: var(--ink);
     line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
   .totals {
+    max-width: 360px;
+    margin-inline-start: auto;
     border-radius: 18px;
     overflow: hidden;
     border: 1px solid var(--line);
@@ -4398,6 +4621,50 @@ export class MapEditor {
     font-size: 11px;
   }
   .footer strong { color: var(--navy); }
+  .accept {
+    margin-top: 26px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--soft);
+  }
+  .accept h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--navy);
+  }
+  .accept p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .accept a {
+    color: var(--cyan);
+    font-weight: 700;
+    text-decoration: underline;
+    word-break: break-all;
+  }
+  .accept-signs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+  }
+  .sign-box {
+    min-height: 78px;
+    border-top: 1px solid #94a3b8;
+    padding-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .sign-box strong {
+    display: block;
+    color: var(--navy);
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
   .omr-amount {
     display: inline-flex;
     align-items: center;
@@ -4473,10 +4740,6 @@ export class MapEditor {
     </table>
 
     <section class="bottom">
-      <div class="note-box">
-        <div class="k">ملاحظات / Notes</div>
-        <div class="v">${notes || '—'}</div>
-      </div>
       <div class="totals">
         <div class="row muted"><span>الأجهزة / Devices</span><span>${money(totals.devicesSubtotal)}</span></div>
         ${totals.programming > 0 ? `<div class="row"><span>سعر البرمجة / Programming</span><span>${money(totals.programming)}</span></div>` : ''}
@@ -4485,6 +4748,34 @@ export class MapEditor {
         ${totals.discountPct > 0 ? `<div class="row discount"><span>الخصم / Discount (${totals.discountPct}%)</span><span>− ${money(totals.discountAmount)}</span></div>` : ''}
         ${totals.tvaPct > 0 ? `<div class="row"><span>الضريبة / TVA (${totals.tvaPct}%)</span><span>${moneyNavy(totals.tvaAmount)}</span></div>` : ''}
         <div class="row grand"><span>الإجمالي / Total</span><span>${money(totals.total)}</span></div>
+      </div>
+      <div class="note-box">
+        <div class="k">ملاحظات / الشروط والأحكام · Notes / Terms &amp; Conditions</div>
+        <div class="v">${notes || '—'}</div>
+      </div>
+    </section>
+
+    <section class="accept">
+      <h3>الموافقة على الشروط والأحكام / Acceptance of Terms &amp; Conditions</h3>
+      <p>
+        بالتوقيع أدناه، يقر العميل بأنه اطلع على الشروط والأحكام ووافق عليها، وأن عرض السعر هذا ملزم وفق البنود الواردة فيه.
+        By signing below, the client confirms they have read and accepted the Terms &amp; Conditions, and that this quotation is binding as stated.
+      </p>
+      <p style="margin-top:8px">
+        رابط الشروط والأحكام / Terms link:
+        <a href="${termsUrl}" target="_blank" rel="noopener">${termsUrl}</a>
+      </p>
+      <div class="accept-signs">
+        <div class="sign-box">
+          <strong>توقيع العميل / Client signature</strong>
+          الاسم / Name: ____________________________<br>
+          التاريخ / Date: ____________________________
+        </div>
+        <div class="sign-box">
+          <strong>توقيع الشركة / Company signature</strong>
+          الاسم / Name: ____________________________<br>
+          التاريخ / Date: ____________________________
+        </div>
       </div>
     </section>
 

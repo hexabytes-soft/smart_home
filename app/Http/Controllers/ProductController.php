@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -38,7 +39,7 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request): RedirectResponse
     {
         $data = $request->safe()->only(['title', 'description', 'buy_price', 'sell_price']);
-        $images = $this->storeImages($request->file('images', []));
+        $images = $this->storeImages($request->file('images'));
         $data['images'] = $images !== [] ? $images : null;
 
         if ($images !== []) {
@@ -87,7 +88,7 @@ class ProductController extends Controller
             }
         }
 
-        $paths = array_merge($paths, $this->storeImages($request->file('images', [])));
+        $paths = array_merge($paths, $this->storeImages($request->file('images')));
         $data['images'] = $paths !== [] ? $paths : null;
 
         $chosen = $request->input('thumbnail');
@@ -122,14 +123,21 @@ class ProductController extends Controller
     }
 
     /**
-     * @param  array<int, \Illuminate\Http\UploadedFile>|null  $files
+     * @param  array<int, UploadedFile>|UploadedFile|null  $files
      * @return list<string>
      */
-    protected function storeImages(?array $files): array
+    protected function storeImages(array|UploadedFile|null $files): array
     {
+        if ($files instanceof UploadedFile) {
+            $files = [$files];
+        }
+
         $paths = [];
 
         foreach (array_values(array_filter($files ?? [])) as $file) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+                continue;
+            }
             $paths[] = $file->store('products', 'public');
         }
 

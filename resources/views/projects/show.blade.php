@@ -10,7 +10,7 @@
                 <h2 class="text-2xl font-bold text-white truncate">{{ $project->name }}</h2>
                 <p class="text-sm text-surface-400 mt-0.5 capitalize">
                     {{ $project->type }} · {{ $project->map_mode }} ·
-                    <span class="{{ $project->status === 'published' ? 'text-emerald-400' : ($project->status === 'archived' ? 'text-surface-500' : 'text-amber-400') }}">{{ $project->status }}</span>
+                    <span class="not-italic normal-case">{{ $project->statusLabel() }}</span>
                 </p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -60,13 +60,8 @@
                             </a>
                         @endcan
                     </div>
-                    <span class="px-3 py-1.5 rounded-xl text-xs font-semibold capitalize border
-                        {{ $project->status === 'published'
-                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                            : ($project->status === 'archived'
-                                ? 'bg-surface-800 text-surface-400 border-surface-700'
-                                : 'bg-amber-500/15 text-amber-300 border-amber-500/30') }}">
-                        {{ $project->status }}
+                    <span class="px-3 py-1.5 rounded-xl text-xs font-semibold border {{ $project->statusBadgeClasses() }}">
+                        {{ $project->statusLabel() }}
                     </span>
                 </div>
             </div>

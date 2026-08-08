@@ -40,7 +40,7 @@
 .sf-nav-inner {
     max-width: 1280px;
     margin: 0 auto;
-    padding: 1rem 1.5rem;
+    padding: 0.55rem 1.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -50,17 +50,46 @@
 .sf-brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
-    font-family: 'Bebas Neue', Impact, sans-serif;
-    font-size: 1.45rem;
-    letter-spacing: 0.04em;
-    color: var(--sf-ink);
     text-decoration: none;
     line-height: 1;
 }
 
-.sf-brand:hover {
-    color: var(--sf-accent);
+.sf-brand-logo {
+    display: block;
+    height: 4.25rem;
+    width: auto;
+    object-fit: contain;
+    background: transparent;
+}
+
+@media (min-width: 640px) {
+    .sf-brand-logo {
+        height: 5.25rem;
+    }
+}
+
+.sf-brand:hover .sf-brand-logo {
+    opacity: 0.92;
+}
+
+.sf-footer-logo {
+    display: block;
+    height: 4.5rem;
+    width: auto;
+    margin: 0 auto 0.75rem;
+    object-fit: contain;
+    background: transparent;
+}
+
+.sf-section--store {
+    padding-top: 1.75rem;
+}
+
+.sf-section-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
 }
 
 .sf-nav-links {
@@ -320,16 +349,15 @@
     color: var(--sf-accent);
 }
 
-/* Clean product grid — text below image */
+/* Clean product grid — 2 per row on mobile, 3 on desktop */
 .sf-grid {
     display: grid;
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-    gap: 2.25rem 1.25rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 0.75rem;
 }
 
 @media (min-width: 640px) {
     .sf-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 2.5rem 1.5rem;
     }
 }
@@ -638,15 +666,41 @@
 
 .sf-product-actions {
     display: flex;
-    gap: 0.5rem;
-    padding: 0 0.85rem 0.85rem;
+    gap: 0.35rem;
+    padding: 0 0 0.35rem;
 }
 
 .sf-btn-sm {
-    padding: 0.45rem 0.7rem;
-    font-size: 0.72rem;
+    padding: 0.4rem 0.45rem;
+    font-size: 0.68rem;
     flex: 1;
     justify-content: center;
+}
+
+@media (max-width: 639px) {
+    .sf-product-media {
+        margin-bottom: 0.55rem;
+    }
+
+    .sf-product-title {
+        font-size: 0.82rem;
+        line-height: 1.25;
+    }
+
+    .sf-price {
+        font-size: 0.9rem;
+    }
+
+    .sf-product-actions {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .sf-btn-sm {
+        width: 100%;
+        font-size: 0.65rem;
+        padding: 0.38rem 0.4rem;
+    }
 }
 
 .sf-price .omr-amount,

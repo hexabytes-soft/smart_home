@@ -44,7 +44,7 @@
                             <div class="flex flex-wrap items-end justify-between gap-2 mb-2">
                                 <div>
                                     <p class="text-xs font-medium text-surface-300">Current images</p>
-                                    <p class="text-[11px] text-surface-500 mt-0.5">Choose which image is the store thumbnail.</p>
+                                    <p class="text-[11px] text-surface-500 mt-0.5">Choose which image is the store thumbnail, or mark images to remove.</p>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -78,9 +78,10 @@
                     @endif
 
                     <div>
-                        <x-input-label for="images" value="Add images (optional)" />
-                        <input id="images" name="images[]" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="mt-1.5 block w-full text-sm text-surface-400 file:mr-3 file:rounded-lg file:border-0 file:bg-surface-800 file:px-3 file:py-2 file:text-xs file:font-medium file:text-surface-200 hover:file:bg-surface-700" />
-                        <p class="mt-1 text-[11px] text-surface-500">JPEG, PNG, WebP, GIF · multiple images · 5MB each</p>
+                        <x-product-image-upload
+                            label="Add more images"
+                            hint="Select multiple photos at once, or pick again to add more. They will be added to this product."
+                        />
                         <x-input-error :messages="$errors->get('images')" class="mt-2" />
                         <x-input-error :messages="$errors->get('images.*')" class="mt-2" />
                     </div>

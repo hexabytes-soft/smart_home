@@ -56,18 +56,24 @@ class ProjectBenefitCalculator
                 $buyUnit = $component ? (float) $component->buy_price : 0.0;
                 $key = $type.'::'.number_format($buyUnit, 3, '.', '').'::'.number_format($sellUnit, 3, '.', '');
 
+                $qty = (float) ($device['qty'] ?? 1);
+                if ($qty <= 0) {
+                    $qty = 1.0;
+                }
+
                 if (! isset($counts[$key])) {
                     $counts[$key] = [
                         'type' => $type,
                         'icon' => $component?->icon ?: '●',
                         'name' => $component?->name ?: $type,
-                        'qty' => 0,
+                        'qty' => 0.0,
                         'buy_unit' => $buyUnit,
                         'sell_unit' => $sellUnit,
+                        'unit' => $component?->unit ?: ($device['unit'] ?? 'piece'),
                     ];
                 }
 
-                $counts[$key]['qty']++;
+                $counts[$key]['qty'] += $qty;
             }
         }
 

@@ -38,6 +38,7 @@
                             <th class="px-4 py-3 font-medium">Component</th>
                             <th class="px-4 py-3 font-medium">Key</th>
                             <th class="px-4 py-3 font-medium">Mount</th>
+                            <th class="px-4 py-3 font-medium">Unit</th>
                             <th class="px-4 py-3 font-medium">
                                 <span class="inline-flex items-center gap-1">Buy <x-omr /></span>
                             </th>
@@ -62,6 +63,12 @@
                                 </td>
                                 <td class="px-4 py-3 text-xs font-mono text-surface-400">{{ $component->key }}</td>
                                 <td class="px-4 py-3 text-xs text-surface-300 capitalize">{{ $component->mount }}</td>
+                                <td class="px-4 py-3 text-xs text-surface-300">
+                                    {{ \App\Support\ComponentUnit::short($component->unit ?: 'piece') }}
+                                    @if (($component->unit ?: 'piece') === 'meter')
+                                        <span class="text-surface-500">/1m</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3" colspan="2">
                                     @can('update', $component)
                                         <form method="POST" action="{{ route('smart-components.updatePrice', $component) }}" class="flex flex-wrap items-center gap-2">

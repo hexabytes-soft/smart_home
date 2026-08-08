@@ -40,7 +40,7 @@
                     <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-4">
                         <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
-                    <p class="text-sm text-surface-400">Published</p>
+                    <p class="text-sm text-surface-400">In progress+</p>
                     <p class="mt-1 text-3xl font-bold text-white">{{ $stats['published'] }}</p>
                 </div>
             </div>
@@ -94,7 +94,7 @@
                             </div>
                             <div class="min-w-0">
                                 <a href="{{ route('projects.show', $project) }}" class="font-medium text-white hover:text-brand-300 transition-colors truncate block">{{ $project->name }}</a>
-                                <p class="text-sm text-surface-500 capitalize">{{ $project->type }} · {{ $project->map_mode }} · {{ $project->status }}</p>
+                                <p class="text-sm text-surface-500 capitalize">{{ $project->type }} · {{ $project->map_mode }} · <span class="normal-case">{{ $project->statusLabel() }}</span></p>
                             </div>
                         </div>
                         <a href="{{ route('projects.map', $project) }}" class="btn-secondary shrink-0 text-xs py-2 px-4">
